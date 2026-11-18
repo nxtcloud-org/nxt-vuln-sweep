@@ -193,7 +193,6 @@ _core/sweep export $C $V
 ## 커밋 전 검사
 
 ```bash
-git config user.email                   # GitHub noreply 주소(<id>+<login>@users.noreply.github.com)여야 함. 개인 메일이면 커밋하지 않음
 git status --short --ignored            # 고객 결과 파일이 추적 대상에 없어야 함
 git diff --cached --name-only           # 취약점 폴더, _core/, INDEX.md, CVE_INDEX.csv, 루트 문서만 있어야 함
 git diff --cached | grep -nE '\b[0-9]{12}\b|(^|[^0-9.])10\.[0-9]+\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+|192\.168\.[0-9]+\.[0-9]+|\.pem\b|BEGIN .*PRIVATE KEY|i-0[0-9a-f]{16}' && echo "민감정보 의심, 확인 필요"
