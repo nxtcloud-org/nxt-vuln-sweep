@@ -9,6 +9,7 @@
 | 규모 | 신규 보안 패치 655건, Risk Matrix 21개 |
 | 기준표 | [criteria.toml](criteria.toml) |
 | 기준표 작성 | 2026-11-18, Rev 1 기준 |
+| 에이전트 지침 | [AGENTS.md](AGENTS.md) (점검 절차, 판정 검토, 기준표 갱신) |
 
 ## 요약
 
@@ -50,35 +51,9 @@
   - Oracle 원문에는 CPU 조건이 없습니다. 판정에는 쓰지 않고 우선순위 참고로만 씁니다.
 - MySQL 8.0 Server는 영향 목록에 없습니다(지원 종료). Cluster 8.0은 목록에 있습니다.
 
-## 원문 확인 방법
+## 점검
 
-- WebFetch와 curl은 403이 나옵니다. 사용자 브라우저(Claude in Chrome)로 열어 JavaScript로 표를 추출했습니다.
-- 표 구조는 다음과 같습니다.
-  - 첫 표가 "Affected Products and Versions"입니다.
-  - 그 뒤 첫 행에 `CVE ID`가 들어간 표가 Risk Matrix입니다. 표 바로 앞의 h3/h4 제목이 제품군 이름입니다.
-  - 열 순서는 표마다 다릅니다. Product 열이나 Package and/or Privilege Required 열이 있는 표가 있으므로, 헤더를 보고 열 위치를 계산해야 합니다.
-- 브라우저 확장의 출력 필터가 `key=`, `auth` 같은 문자열을 가립니다. 추출 결과의 키 이름에 이런 단어를 쓰지 않습니다.
-
-## 이 취약점 점검하기
-
-수집기 변경: 없음. 기본 수집기가 Java(컨테이너 포함), MySQL, Oracle Home(DB, Client, WebLogic)을 모두 잡습니다.
-
-```bash
-V=2026-11-17_oracle_cspunov2026; C=<고객>
-_core/sweep init $C                         # 처음 한 번, config.env 채우기
-_core/sweep inventory $C $V
-_core/sweep ssm $C $V linux <시범 1대>      # 시범 결과 확인 후 전체
-_core/sweep ssm $C $V linux @targets_linux.txt
-_core/sweep ssm $C $V windows @targets_windows.txt
-_core/sweep judge $C $V
-_core/sweep notes $C $V                     # notes.toml 작성
-_core/sweep export $C $V
-```
-
-추가 확인 사항
-- RDS 엔진이 oracle-* 또는 mysql이면 엔진 버전을 영향 버전과 대조합니다. AWS가 패치 버전을 제공하는지도 확인합니다(api/<리전>/rds.json).
-- Aurora MySQL은 AWS 자체 버전 체계라 Oracle 공지 버전과 바로 비교하지 않습니다. AWS 보안 공지를 따로 봅니다.
-- Oracle JDK 8 영향 서버는 보고서 권고에 라이선스 조건을 적습니다. 8u202 이후 업데이트는 상용 구독이 필요하므로 OpenJDK 계열 전환을 검토 사항으로 둡니다.
+점검 명령, 단계별 추가 확인(RDS, Lambda, WebLogic), 판정 검토 포인트, 보고 문안 가이드, 원문 읽는 방법은 [AGENTS.md](AGENTS.md)에 있습니다.
 
 ## 다음 일정 (원문 기준)
 
