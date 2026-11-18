@@ -1,0 +1,39 @@
+# RUN_DIR/notes.toml 로 복사해서 쓴다. 판정(_core/sweep judge) 결과를 검토한 뒤 에이전트가 작성하는 보고 문안이다.
+# 고객이 읽는 문장이다. 사실만 쓰고, 추정은 추정이라고 밝힌다. 서버명은 EC2 Name 태그 그대로 쓴다.
+
+[report]
+customer = "acme"                                   # 파일명에 들어감
+title = "Oracle 보안 패치(CSPU 2026년 11월) 영향 전수조사 결과"
+written = "2026-11-18"
+target = "AWS 계정 123456789012 (고객사명), 서울 리전. 다른 리전에는 리소스 없음"
+period = "2026-11-18 11:30-12:20 (KST)"
+# method, scope 는 생략하면 기본 문구를 쓴다
+# output_name = "파일명.xlsx"
+
+key_findings = [
+  "P1 N대: ... (서버명과 버전을 구체적으로)",
+  "공지 대상이지만 발견되지 않은 제품도 적는다 (예: Database Server, WebLogic 없음)",
+]
+
+recommendations = [
+  "P1 서버부터 패치 일정을 검토합니다. ...",
+]
+
+# 생략하면 기본 한계 문구 4개를 쓴다
+# limitations = ["..."]
+
+# 서버별 현황 시트의 비고 칸. 키는 EC2 Name 태그(없으면 instance-id)
+[host_notes]
+"web-prd-01" = "CPU Ice Lake(AVX-512 VBMI 지원 추정)"
+
+# 점검하지 못한 running 인스턴스의 사유와 필요 조치 (정지 인스턴스는 자동으로 채워짐)
+[unscanned]
+"i-0123456789abcdef0" = { reason = "SSM 에이전트 미동작, EC2 키 페어 없음", action = "장비 담당자 접속 정보 확보 후 점검" }
+
+# 인스턴스가 아닌 미점검 대상 (ECR 이미지 등)
+[[extra_unscanned]]
+target = "ECR 이미지"
+id = "repo/web, repo/was"
+state = "-"
+reason = "이미지 자체는 스캔하지 않음"
+action = "이미지 재빌드 시 기반 이미지의 JDK 버전 확인"
