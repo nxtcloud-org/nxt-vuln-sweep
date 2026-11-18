@@ -54,10 +54,21 @@ case "$cmd" in
     id=${1:?취약점ID 필요}
     valid_id "$id" || { echo "형식: YYYY-MM-DD_벤더_공지키 (소문자) 또는 CVE-YYYY-NNNN" >&2; exit 1; }
     [ -e "$REPO/$id" ] && { echo "이미 있음: $REPO/$id" >&2; exit 1; }
-    cp -R "$CORE/templates/vuln" "$REPO/$id"
-    python3 -c 'import sys; p=sys.argv[1]; s=open(p,encoding="utf-8").read().replace("id = \"YYYY-MM-DD_vendor_key\"", "id = \"%s\"" % sys.argv[2], 1); open(p,"w",encoding="utf-8").write(s)' "$REPO/$id/criteria.toml" "$id"
-    echo "생성: $REPO/$id (README.md, criteria.toml 채우기)"
     if [[ $id == CVE-* ]]; then br="single/$id"; else br="set/$id"; fi
+    cp -R "$CORE/templates/vuln" "$REPO/$id"
+    python3 - "$REPO/$id" "$id" "$br" <<'PY'
+import os, sys
+d, vid, br = sys.argv[1:4]
+def rw(name, pairs):
+    p = os.path.join(d, name)
+    s = open(p, encoding="utf-8").read()
+    for a, b in pairs:
+        s = s.replace(a, b)
+    open(p, "w", encoding="utf-8").write(s)
+rw("criteria.toml", [('id = "YYYY-MM-DD_vendor_key"', f'id = "{vid}"')])
+rw("AGENTS.md", [("- 작업 브랜치: `set/<취약점ID>` 또는 `single/<CVE-ID>`", f"- 작업 브랜치: `{br}`"), ("<취약점ID>", vid)])
+PY
+    echo "생성: $REPO/$id (README.md, AGENTS.md, criteria.toml 채우기)"
     cur=$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
     [ "$cur" = "$br" ] || echo "작업 브랜치: git checkout -b $br origin/main   (현재 브랜치: ${cur:-없음})" ;;
   index)

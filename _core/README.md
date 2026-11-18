@@ -10,7 +10,7 @@
 | run_ssm.sh | SSM Run Command로 수집기 실행, 결과 회수 |
 | run_bastion.sh, probe_bastion.sh | SSM 미관리 서버를 bastion 경유 SSH로 수집, 접속 계정 확인 |
 | vsweep/ | Python: targets(대상 목록), judge(판정), products(제품별 버전 해석), export_xlsx(보고서), build_index(색인) |
-| templates/vuln/ | 새 취약점 폴더 템플릿 (README.md, criteria.toml) |
+| templates/vuln/ | 새 취약점 폴더 템플릿 (README.md, AGENTS.md, CLAUDE.md, criteria.toml) |
 | templates/run/ | 고객 설정(config.env)과 보고 문안(notes.toml) 템플릿 |
 
 ## 결과 폴더

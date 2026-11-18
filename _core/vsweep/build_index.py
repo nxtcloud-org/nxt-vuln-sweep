@@ -18,7 +18,7 @@ def main():
         if not is_vuln_id(name):
             problems.append(f"폴더명 형식 위반: {name} (YYYY-MM-DD_벤더_공지키 또는 CVE-YYYY-NNNN)")
             continue
-        for f in ("criteria.toml", "README.md"):
+        for f in ("criteria.toml", "README.md", "AGENTS.md", "CLAUDE.md"):
             if not os.path.exists(os.path.join(d, f)):
                 problems.append(f"{name}/{f} 없음")
         if not os.path.exists(os.path.join(d, "criteria.toml")):
