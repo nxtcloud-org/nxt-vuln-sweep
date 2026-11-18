@@ -1,0 +1,474 @@
+# 판정 기준표: Oracle Critical Security Patch Update Advisory - November 2026
+# 값은 모두 공식 Risk Matrix의 "Supported Versions Affected"에서 옮겼다 (2026-11-18, Rev 1 기준).
+# 원문: https://www.oracle.com/security-alerts/cspunov2026.html
+
+id = "2026-11-17_oracle_cspunov2026"
+vendor = "oracle"
+vendor_label = "Oracle"
+title = "Oracle Critical Security Patch Update Advisory - November 2026"
+url = "https://www.oracle.com/security-alerts/cspunov2026.html"
+published = 2026-11-17
+revision = "Rev 1"
+total_patches = 655   # 21개 Risk Matrix 행 수 합계
+
+# ---------------- 보고서에 들어가는 판정 규칙과 일정
+judgement_rules = [
+  "Oracle은 지원 중인 버전 중 최신 영향 버전만 나열하므로, 같은 계열에서 그 이하 버전은 모두 영향 범위로 판정했습니다.",
+  "Java 버전은 다섯 자리(기능.중간.업데이트.패치.빌드)로 비교했습니다. 예: Temurin 21.0.13은 영향 범위, Corretto 21.0.13.1(11월 패치 빌드)은 범위 밖.",
+  "Java 8은 Oracle(8u511)과 OpenJDK 계열(8u512)의 업데이트 번호가 1 차이 나는 점을 반영했습니다(2026년 10월 분기 기준).",
+  "표에 없는 Java 계열(1.x, 5, 6, 7 등)과 MySQL 5.x, 8.0, Oracle Client 11.2 같은 지원 종료 버전은 EOL로 분류했습니다. 패치가 제공되지 않는 버전입니다.",
+  "Corretto, Temurin, OS 패키지 등 OpenJDK 계열은 Oracle 제품이 아니지만 같은 소스에서 나오므로 같은 버전이면 영향 범위 버전으로 분류하고, 벤더 패치 출시 여부는 별도 확인 대상으로 두었습니다.",
+  "MariaDB와 IBM Java는 Oracle 제품이 아니므로 이번 공지 대상에서 제외했습니다.",
+  "서버 해당 최고 CVSS는 클라이언트 전용(Note 2) CVE를 제외한 점수입니다.",
+]
+
+next_releases = [
+  { date = "2026-12-15", type = "CSPU" },
+  { date = "2027-01-19", type = "CPU (분기 누적)" },
+  { date = "2027-02-16", type = "CSPU" },
+  { date = "2027-03-16", type = "CSPU" },
+]
+
+[java]
+# 공지 대상 제품으로 보는 vendor 이름 (sweep/products.py java_vendor() 반환값)
+primary_vendors = ["Oracle Java SE", "Oracle GraalVM"]
+derivative_label = "OpenJDK 계열"
+
+# 계열별 최신 영향 버전. 같은 계열에서 이 값 이하(다섯 자리 비교)면 영향 범위. 표에 없는 계열은 EOL로 판정.
+[java.latest_affected]
+"8" = "8.0.511"
+"11" = "11.0.33.0.3"
+"17" = "17.0.21.0.3"
+"21" = "21.0.13.0.3"
+"25" = "25.0.5.0.3"
+"27" = "27.0.1.0.3"
+
+# 파생 빌드(Corretto, Temurin, OS 패키지 등)는 Java 8 업데이트 번호가 Oracle보다 1 크다 (2026년 10월 분기 OpenJDK 8u512)
+[java.derivative_latest_affected]
+"8" = "8.0.512"
+
+# 서버 환경에도 해당하는 CVE(Note 1, 3) 중 계열별 최고 CVSS
+[java.max_server_cvss]
+"8" = 7.4    # CVE-2026-114940 JSSE
+"11" = 7.4   # CVE-2026-114940 JSSE
+"17" = 8.1   # CVE-2026-114938 Compiler
+"21" = 8.1
+"25" = 8.1
+"27" = 8.1
+
+[java.exclude_vendors]
+"IBM Java" = "Oracle 공지 대상 아님(IBM Java, IBM 보안 공지로 별도 확인)"
+
+[mysql]
+affected = [["8.4.0", "8.4.13"], ["9.7.0", "9.7.4"], ["26.10.0", "26.10.99"]]
+eol_below = "8.4.0"
+max_cvss = 9.1
+mariadb_note = "해당 없음(MariaDB, Oracle 제품 아님)"
+
+[mysql.eol_notes]
+"8.0" = "EOL(MySQL 8.0, 공지의 Server 영향 목록에 없음)"
+
+[oracle_home]
+instant_client_note = "공지 대상 목록에 없음(클라이언트 라이브러리), 참고"
+
+# 제품별 EOL 버전 접두어. 공지의 지원 버전(DB 19, 21, 23)보다 오래된 것
+[oracle_home.eol_prefixes]
+Client = ["9.", "10.", "11.", "12.", "18."]
+Database = ["9.", "10.", "11.", "12.", "18."]
+
+# ---------------- 보고서 판정 기준 시트용
+[[products]]
+name = "Oracle Java SE"
+versions = "8u511b33, 8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+max_cvss = 8.1
+note = "11건 모두 인증 없이 원격 공격 가능"
+
+[[products]]
+name = "Oracle GraalVM for JDK"
+versions = "17.0.21.0.3, 21.0.13.0.3"
+max_cvss = 8.1
+note = "Java SE와 같은 CVE"
+
+[[products]]
+name = "Oracle JavaFX"
+versions = "21.0.13, 25.0.5, 27.0.1"
+max_cvss = 7.5
+note = "클라이언트 전용"
+
+[[products]]
+name = "MySQL Server"
+versions = "8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+max_cvss = 9.1
+note = "CVE-2026-114952(Client programs) 인증 없이 원격 공격 가능"
+
+[[products]]
+name = "MySQL Cluster"
+versions = "8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+max_cvss = 9.1
+note = ""
+
+[[products]]
+name = "Oracle Database Server"
+versions = "19.3-19.33, 21.3-21.24, 23.4.0-23.26.4"
+max_cvss = 9.9
+note = "인증 없이 원격 공격 가능한 최고 점수는 7.5(OpenSSL)"
+
+[[products]]
+name = "Oracle WebLogic Server"
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+max_cvss = 10.0
+note = "CVE-2026-91569(TopLink Integration) 인증 없이 원격 공격 가능"
+
+# ---------------- 판정에 쓰는 제품의 CVE (전체 655건은 원문 참고)
+# scope: server(Note 1, 서버 해당), client(Note 2, 클라이언트 전용), both(Note 3). Java SE 외 제품은 비워 둠.
+
+# Oracle Java SE
+[[cves]]
+id = "CVE-2026-114938"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Compiler"
+cvss = 8.1
+remote_unauth = true
+scope = "server"
+versions = "8u511b33-perf, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3; GraalVM for JDK 17.0.21.0.3, 21.0.13.0.3; GraalVM EE 21.3.20.0.3"
+
+[[cves]]
+id = "CVE-2026-86144"
+product = "Oracle Java SE, Oracle JavaFX"
+component = "JavaFX (libxml2)"
+cvss = 7.5
+remote_unauth = true
+scope = "client"
+versions = "8u511b33; JavaFX 21.0.13, 25.0.5, 27.0.1"
+
+[[cves]]
+id = "CVE-2026-114939"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "JGSS"
+cvss = 7.4
+remote_unauth = true
+scope = "client"
+versions = "8u511b33, 8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114940"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "JSSE"
+cvss = 7.4
+remote_unauth = true
+scope = "both"
+versions = "8u511b33, 8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114941"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Compiler"
+cvss = 7.0
+remote_unauth = true
+scope = "server"
+versions = "21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114942"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Libraries"
+cvss = 7.0
+remote_unauth = true
+scope = "server"
+versions = "21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114943"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Hotspot"
+cvss = 6.5
+remote_unauth = true
+scope = "both"
+versions = "8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114944"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Core Java Libraries"
+cvss = 5.9
+remote_unauth = true
+scope = "both"
+versions = "8u511b33, 8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114945"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Libraries"
+cvss = 5.3
+remote_unauth = true
+scope = "both"
+versions = "21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114946"
+product = "Oracle Java SE, Oracle GraalVM"
+component = "Compiler"
+cvss = 4.8
+remote_unauth = true
+scope = "both"
+versions = "8u511b33, 8u511b33-perf, 11.0.33.0.3, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3"
+
+[[cves]]
+id = "CVE-2026-114947"
+product = "Oracle Java SE"
+component = "JSSE"
+cvss = 3.7
+remote_unauth = true
+scope = "client"
+versions = "25.0.5.0.3, 27.0.1.0.3"
+
+# MySQL
+[[cves]]
+id = "CVE-2026-115557"
+product = "MySQL Shell"
+component = "Shell: Core Client (Python)"
+cvss = 9.8
+remote_unauth = true
+versions = "26.10.0"
+
+[[cves]]
+id = "CVE-2026-114952"
+product = "MySQL Server, MySQL Cluster"
+component = "Client programs"
+cvss = 9.1
+remote_unauth = true
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-92392"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: Packaging (curl)"
+cvss = 8.1
+remote_unauth = true
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-114951"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: Logging"
+cvss = 7.2
+remote_unauth = false
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-114950"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: Optimizer"
+cvss = 7.2
+remote_unauth = false
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-114949"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: Replication"
+cvss = 7.2
+remote_unauth = false
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-127428"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: GIS"
+cvss = 7.1
+remote_unauth = false
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-114953"
+product = "MySQL Server, MySQL Cluster"
+component = "Server: Replication"
+cvss = 6.5
+remote_unauth = false
+versions = "Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+[[cves]]
+id = "CVE-2026-114122"
+product = "MySQL Workbench"
+component = "Workbench (electron)"
+cvss = 3.9
+remote_unauth = false
+versions = "26.10.0"
+
+[[cves]]
+id = "CVE-2026-114948"
+product = "MySQL Cluster"
+component = "Cluster: JS module"
+cvss = 2.5
+remote_unauth = false
+versions = "8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+
+# Oracle Database Server
+[[cves]]
+id = "CVE-2026-114819"
+product = "Oracle Database Server"
+component = "Oracle Text"
+cvss = 9.9
+remote_unauth = false
+versions = "19.3-19.32, 21.3-21.24, 23.4.0-23.26.3"
+
+[[cves]]
+id = "CVE-2026-114848"
+product = "Oracle Database Server"
+component = "Oracle Text"
+cvss = 9.9
+remote_unauth = false
+versions = "19.3-19.33, 21.3-21.24, 23.4.0-23.26.3"
+
+[[cves]]
+id = "CVE-2026-114822"
+product = "Oracle Database Server"
+component = "RDBMS"
+cvss = 9.9
+remote_unauth = false
+versions = "23.4.0-23.26.4"
+
+[[cves]]
+id = "CVE-2026-72897"
+product = "Oracle Database Server"
+component = "RDBMS (OpenSSL)"
+cvss = 7.5
+remote_unauth = true
+versions = "19.32-19.33, 23.4.0-23.26.4"
+
+[[cves]]
+id = "CVE-2026-115557"
+product = "Oracle Database Server"
+component = "RDBMS (Python)"
+cvss = 7.4
+remote_unauth = true
+versions = "21.3-21.24, 23.4.0-23.26.3"
+
+[[cves]]
+id = "CVE-2026-89425"
+product = "Oracle Database Server"
+component = "Fleet Patching and Provisioning (jackson-core)"
+cvss = 6.5
+remote_unauth = false
+versions = "19.3-19.33, 21.3-21.24, 23.4.0-23.26.4"
+
+[[cves]]
+id = "CVE-2026-64607"
+product = "Oracle Database Server"
+component = "RDBMS (Apache HttpClient)"
+cvss = 4.3
+remote_unauth = true
+versions = "19.3-19.33, 21.3-21.24, 23.4.0-23.26.4"
+
+# Fusion Middleware (WebLogic, HTTP Server, Platform Security for Java, Common Libraries)
+[[cves]]
+id = "CVE-2026-114824"
+product = "Oracle Platform Security for Java"
+component = "Centralized Thirdparty Jars"
+cvss = 10.0
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-91569"
+product = "Oracle WebLogic Server"
+component = "TopLink Integration"
+cvss = 10.0
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91570"
+product = "Oracle WebLogic Server"
+component = "TopLink Integration"
+cvss = 9.8
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91583"
+product = "Oracle WebLogic Server"
+component = "TopLink Integration"
+cvss = 9.8
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91456"
+product = "Oracle WebLogic Server"
+component = "Core"
+cvss = 9.8
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91470"
+product = "Oracle WebLogic Server"
+component = "Core"
+cvss = 9.8
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91585"
+product = "Oracle WebLogic Server"
+component = "TopLink Integration"
+cvss = 9.8
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91469"
+product = "Oracle WebLogic Server"
+component = "Core"
+cvss = 9.4
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
+
+[[cves]]
+id = "CVE-2026-91548"
+product = "Oracle Platform Security for Java"
+component = "Centralized Thirdparty Jars"
+cvss = 8.6
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-9545"
+product = "Oracle HTTP Server"
+component = "WebLogic Server Proxy Plug-in for Oracle HTTP Server (curl)"
+cvss = 7.5
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-91551"
+product = "Oracle Platform Security for Java"
+component = "Centralized Thirdparty Jars"
+cvss = 7.5
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-91403"
+product = "Oracle Middleware Common Libraries and Tools"
+component = "Thirdparty Patch (Certifi)"
+cvss = 7.4
+remote_unauth = true
+versions = "14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-91560"
+product = "Oracle Platform Security for Java"
+component = "Centralized Thirdparty Jars"
+cvss = 6.5
+remote_unauth = true
+versions = "12.2.1.4.0, 14.1.2.0.0"
+
+[[cves]]
+id = "CVE-2026-91416"
+product = "Oracle WebLogic Server"
+component = "Core"
+cvss = 5.9
+remote_unauth = false
+versions = "12.2.1.4.0"
