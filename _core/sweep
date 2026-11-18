@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# nxt-vuln-sweep 진입점. 리포 안 어디서든 실행할 수 있다.
+#
+# 리포 = 취약점 폴더(루트의 YYYY-MM-DD_벤더_공지키/ 또는 CVE-YYYY-NNNN/)와 공통 엔진(_core/)
+# 고객 설정과 점검 결과는 리포 밖 $SWEEP_RUNS 에 둔다 (기본: 리포 상위 폴더의 vuln-sweep-runs).
+#   $SWEEP_RUNS/<고객>/config.env
+#   $SWEEP_RUNS/<고객>/<취약점ID>/          = RUN_DIR (api/, hosts/, findings.csv, 엑셀 등)
+set -euo pipefail
+CORE=$(cd "$(dirname "$0")" && pwd)
+REPO=$(dirname "$CORE")
+RUNS=${SWEEP_RUNS:-$(dirname "$REPO")/vuln-sweep-runs}
+case "$(cd "$(dirname "$RUNS")" 2>/dev/null && pwd)/$(basename "$RUNS")/" in
+  "$REPO"/*) echo "SWEEP_RUNS($RUNS)가 리포 안에 있습니다. 고객 정보가 커밋될 수 있으니 리포 밖 경로를 쓰세요." >&2; exit 1 ;;
+esac
+
+usage() {
+  cat <<EOF
+사용법: _core/sweep <명령> [인자]
+
+취약점 폴더 (리포 안, 커밋 대상)
+  new <취약점ID>                          템플릿으로 루트에 취약점 폴더 생성
+  index                                   INDEX.md, CVE_INDEX.csv 갱신과 폴더 형식 검사
+
+고객 점검 (리포 밖 $RUNS, 커밋하지 않음)
+  init <고객>                             고객 설정 파일 생성 (<SWEEP_RUNS>/<고객>/config.env)
+  inventory <고객> <취약점ID>             AWS API 자산 조회, 스캔 대상 목록 생성
+  probe <고객> <취약점ID> <사설IP>...     bastion 경유 SSH 접속 계정 확인 (키 인증만)
+  ssm <고객> <취약점ID> linux|windows <instance-id...|@targets_linux.txt|@targets_windows.txt>
+  bastion <고객> <취약점ID> <instance-id> <user> <사설IP> [...]
+  judge <고객> <취약점ID>                 판정 (findings.csv, hosts_summary.csv)
+  notes <고객> <취약점ID>                 보고 문안 템플릿(notes.toml) 복사
+  export <고객> <취약점ID>                고객 보고용 엑셀 생성
+  status <고객> <취약점ID>                진행 상황 요약
+  path <고객> <취약점ID>                  RUN_DIR 경로 출력
+
+취약점ID: 루트 폴더명. 취약점 세트는 YYYY-MM-DD_벤더_공지키, 단일 CVE는 CVE-YYYY-NNNN
+EOF
+}
+
+valid_id() { [[ $1 =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}_[a-z0-9-]+_[a-z0-9-]+$ || $1 =~ ^CVE-[0-9]{4}-[0-9]{4,}$ ]]; }
+valid_customer() { [[ $1 =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "고객 코드는 소문자 영문, 숫자, 하이픈: $1" >&2; exit 1; }; }
+run_dir() {
+  local c=${1:?고객 필요} v=${2:?취약점ID 필요}
+  valid_customer "$c"
+  [ -f "$REPO/$v/criteria.toml" ] || { echo "취약점 폴더 없음: $REPO/$v (criteria.toml)" >&2; exit 1; }
+  [ -f "$RUNS/$c/config.env" ] || { echo "고객 설정 없음: $RUNS/$c/config.env (먼저 _core/sweep init $c)" >&2; exit 1; }
+  mkdir -p "$RUNS/$c/$v"
+  echo "$RUNS/$c/$v"
+}
+
+cmd=${1:-help}; [ $# -gt 0 ] && shift
+case "$cmd" in
+  new)
+    id=${1:?취약점ID 필요}
+    valid_id "$id" || { echo "형식: YYYY-MM-DD_벤더_공지키 (소문자) 또는 CVE-YYYY-NNNN" >&2; exit 1; }
+    [ -e "$REPO/$id" ] && { echo "이미 있음: $REPO/$id" >&2; exit 1; }
+    cp -R "$CORE/templates/vuln" "$REPO/$id"
+    python3 -c 'import sys; p=sys.argv[1]; s=open(p,encoding="utf-8").read().replace("id = \"YYYY-MM-DD_vendor_key\"", "id = \"%s\"" % sys.argv[2], 1); open(p,"w",encoding="utf-8").write(s)' "$REPO/$id/criteria.toml" "$id"
+    echo "생성: $REPO/$id (README.md, criteria.toml 채우기)"
+    if [[ $id == CVE-* ]]; then br="single/$id"; else br="set/$id"; fi
+    cur=$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    [ "$cur" = "$br" ] || echo "작업 브랜치: git checkout -b $br origin/main   (현재 브랜치: ${cur:-없음})" ;;
+  index)
+    cd "$CORE" && python3 -m vsweep.build_index ;;
+  init)
+    c=${1:?고객 필요}; valid_customer "$c"
+    mkdir -p "$RUNS/$c"
+    if [ -f "$RUNS/$c/config.env" ]; then echo "이미 있음: $RUNS/$c/config.env"; else cp "$CORE/templates/run/config.env.example" "$RUNS/$c/config.env"; echo "생성: $RUNS/$c/config.env (값 채우기)"; fi ;;
+  inventory)
+    d=$(run_dir "${1:-}" "${2:-}"); "$CORE/api_inventory.sh" "$d" ;;
+  probe)
+    d=$(run_dir "${1:-}" "${2:-}"); shift 2; "$CORE/probe_bastion.sh" "$d" "$@" ;;
+  ssm)
+    d=$(run_dir "${1:-}" "${2:-}"); shift 2; "$CORE/run_ssm.sh" "$d" "$@" ;;
+  bastion)
+    d=$(run_dir "${1:-}" "${2:-}"); shift 2; "$CORE/run_bastion.sh" "$d" "$@" ;;
+  judge)
+    d=$(run_dir "${1:-}" "${2:-}"); cd "$CORE" && python3 -m vsweep.judge "$REPO/$2" "$d" ;;
+  notes)
+    d=$(run_dir "${1:-}" "${2:-}")
+    if [ -f "$d/notes.toml" ]; then echo "이미 있음: $d/notes.toml"; else cp "$CORE/templates/run/notes.toml.example" "$d/notes.toml"; echo "생성: $d/notes.toml (내용 작성)"; fi ;;
+  export)
+    d=$(run_dir "${1:-}" "${2:-}"); cd "$CORE" && python3 -m vsweep.export_xlsx "$REPO/$2" "$d" ;;
+  status)
+    d=$(run_dir "${1:-}" "${2:-}")
+    python3 - "$d" <<'PY'
+import glob, os, sys
+d = sys.argv[1]
+def words(p):
+    return open(p).read().split() if os.path.exists(p) else []
+lin, win = words(os.path.join(d, "targets_linux.txt")), words(os.path.join(d, "targets_windows.txt"))
+unm = [l for l in open(os.path.join(d, "targets_unmanaged.tsv"))] if os.path.exists(os.path.join(d, "targets_unmanaged.tsv")) else []
+tsv = glob.glob(os.path.join(d, "hosts", "i-*.tsv"))
+done = [p for p in tsv if open(p, errors="replace").read().rstrip().splitlines()[-1:] and open(p, errors="replace").read().rstrip().splitlines()[-1].startswith("END")]
+print(f"RUN_DIR: {d}")
+print(f"자산 조회: {'완료' if os.path.isdir(os.path.join(d, 'api')) else '안 함'}  대상 SSM Linux {len(lin)}, Windows {len(win)}, 미관리 {len(unm)}")
+print(f"수집: 결과 {len(tsv)}대, 완주 {len(done)}대")
+missing = [i for i in lin + win if not os.path.exists(os.path.join(d, "hosts", f"{i}.tsv"))]
+if missing:
+    print(f"SSM 대상 중 결과 없음 {len(missing)}대: {' '.join(missing)}")
+print(f"판정: {'있음' if os.path.exists(os.path.join(d, 'findings.csv')) else '없음'}  보고 문안: {'있음' if os.path.exists(os.path.join(d, 'notes.toml')) else '없음'}  엑셀: {', '.join(os.path.basename(x) for x in glob.glob(os.path.join(d, '*.xlsx'))) or '없음'}")
+PY
+    ;;
+  path)
+    run_dir "${1:-}" "${2:-}" ;;
+  help|-h|--help) usage ;;
+  *) usage; exit 1 ;;
+esac
