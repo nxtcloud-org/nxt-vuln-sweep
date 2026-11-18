@@ -1,0 +1,77 @@
+# 판정 기준표 템플릿. _core/sweep new <취약점ID> 가 루트에 <취약점ID>/criteria.toml 로 복사한다.
+# 규칙
+#   - 값은 반드시 공식 원문에서 옮긴다. 2차 보도, 블로그 값은 쓰지 않는다 (참고 사항은 advisory.md에만 적는다).
+#   - 루트 키(id, title, judgement_rules, next_releases 등)는 모든 [표] 헤더보다 위에 둔다. TOML은 헤더 아래 키를 그 표에 넣는다.
+#   - 이번 공지에 해당하지 않는 제품 섹션([java], [mysql], [oracle_home])은 지운다. 섹션이 없으면 그 제품 발견 항목은 "참고"로 분류된다.
+
+id = "YYYY-MM-DD_vendor_key"          # 폴더명과 같아야 함 (YYYY-MM-DD_벤더_공지키 또는 CVE-YYYY-NNNN, _core/sweep index 가 검사)
+vendor = "vendor"                      # 소문자 (oracle, openssl, apache, microsoft ...)
+vendor_label = "Vendor"                # 보고서 문구에 쓰는 이름 (예: "영향(Oracle 제품)")
+title = "공식 공지 제목 그대로"
+url = "https://..."
+published = 2026-01-01
+revision = "Rev 1"
+total_patches = 0                      # 원문에 수치가 없으면 지운다
+
+judgement_rules = [
+  "보고서 판정 기준 시트에 들어갈 문장. 고객이 읽는 문장으로 쓴다.",
+]
+
+next_releases = [
+  # { date = "2026-01-20", type = "CPU" },
+]
+
+# ---------------- Java (Oracle Java SE, OpenJDK 공지일 때)
+[java]
+primary_vendors = ["Oracle Java SE", "Oracle GraalVM"]   # 공지 대상 제품으로 볼 vendor (_core/vsweep/products.py java_vendor 반환값)
+derivative_label = "OpenJDK 계열"
+
+[java.latest_affected]     # 계열별 최신 영향 버전, 다섯 자리까지. 표에 없는 계열은 EOL
+"8" = "8.0.000"
+"17" = "17.0.0.0.0"
+
+[java.derivative_latest_affected]   # 파생 빌드만 기준이 다를 때 (예: Java 8 업데이트 번호 차이)
+# "8" = "8.0.000"
+
+[java.max_server_cvss]     # 서버 환경에 해당하는 CVE 중 계열별 최고 점수
+"8" = 0.0
+"17" = 0.0
+
+[java.exclude_vendors]     # 이번 공지와 무관한 vendor와 보고서 문구
+"IBM Java" = "공지 대상 아님(IBM Java, IBM 보안 공지로 별도 확인)"
+
+# ---------------- MySQL
+[mysql]
+affected = [["8.4.0", "8.4.0"]]   # [하한, 상한] 포함 범위 목록
+eol_below = "8.4.0"                # 이보다 낮으면 EOL
+max_cvss = 0.0
+mariadb_note = "해당 없음(MariaDB, Oracle 제품 아님)"
+
+[mysql.eol_notes]
+# "8.0" = "EOL(MySQL 8.0, 공지의 Server 영향 목록에 없음)"
+
+# ---------------- Oracle Home (DB, Client, WebLogic)
+[oracle_home]
+instant_client_note = "공지 대상 목록에 없음(클라이언트 라이브러리), 참고"
+
+[oracle_home.eol_prefixes]   # 제품별 EOL 버전 접두어 (WebLogic처럼 지원 중인 12.x가 있으면 섞지 않는다)
+Client = ["11.", "12.", "18."]
+Database = ["11.", "12.", "18."]
+
+# ---------------- 보고서 판정 기준 시트용 제품 표
+[[products]]
+name = "제품명"
+versions = "원문의 영향 버전 문자열"
+max_cvss = 0.0
+note = ""
+
+# ---------------- 판정에 쓰는 제품의 CVE (CVE_INDEX.csv에 들어감)
+# id 형식: CVE-YYYY-NNNN... (대문자). scope: server | client | both (원문에 구분이 없으면 지운다)
+[[cves]]
+id = "CVE-0000-0000"
+product = "제품명"
+component = "구성요소"
+cvss = 0.0
+remote_unauth = false
+scope = "both"
+versions = "영향 버전"

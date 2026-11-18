@@ -1,0 +1,24 @@
+# 고객 설정과 점검 결과는 리포 밖($SWEEP_RUNS)에 둔다. 혹시 리포 안에 생겨도 올라가지 않게 막는다.
+vuln-sweep-runs/
+runs/
+customers/
+config.env
+notes.toml
+findings.csv
+hosts_summary.csv
+scan_log.tsv
+commands.log
+targets_*
+*.xlsx
+*.invocation.json
+
+# 접속 정보
+*.pem
+*.key
+*.ppk
+.env
+known_hosts*
+
+__pycache__/
+*.pyc
+.DS_Store
