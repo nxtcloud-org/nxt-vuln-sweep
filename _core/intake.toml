@@ -1,0 +1,107 @@
+# 공지 후보 수집(intake) 설정. `_core/sweep intake`가 읽는다.
+# 공개 공지만 다룬다. 고객 정보(고객명, 서버, 계정)를 넣지 않는다.
+#
+# 흐름: KISA 보호나라 보안공지(보안 업데이트 권고)에서 최근 공지를 읽고
+#       감시 목록(watch)에 든 벤더만 남긴 뒤, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(dismissed)를 뺀다.
+#       KISA가 국내 기준으로 주요 벤더 업데이트를 골라 주므로 소스는 이것 하나만 쓴다(Oracle CPU/CSPU도 KISA에 올라옴).
+#       남은 것이 후보다. 후보는 에이전트가 원문(벤더 공식 공지)을 읽고 AGENTS.md 작업 A로 등록한다.
+
+# 요청에 붙이는 User-Agent. 수집기임을 그대로 밝힌다(브라우저 흉내를 내지 않는다).
+user_agent = "nxt-vuln-sweep-intake/1.0 (+https://github.com/nxtcloud-org/nxt-vuln-sweep)"
+days = 14   # 기본 조회 기간(일)
+
+# ---------------- 소스
+[sources.kisa]
+label = "KISA 보호나라 보안공지"
+url = "https://www.boho.or.kr/kr/rss.do?bbsId=B0000133"
+title_must = ["보안 업데이트 권고"]   # 이 문구가 든 공지만 본다(일반 권고문 제외). 상세 페이지에서 CVE와 참고 링크를 읽는다
+
+# ---------------- 감시 목록 (고객 서버 스택)
+# match: 소문자 부분 일치로 KISA 공지 제목의 벤더명(예: "NGINX 제품 보안 업데이트 권고"의 NGINX)을 대조한다. exclude가 들어 있으면 제외
+# collector: 현재 수집기와 판정기가 다루는 criteria 섹션. 비어 있으면 등록 전에 수집기 확장이 필요하다
+# 네트워크 장비, 스토리지, 데스크톱 제품(Citrix, Fortinet, Synology 등)은 서버 내부 점검으로 판정할 수 없어 넣지 않는다
+
+[[watch]]
+name = "Oracle"
+match = ["oracle", "java", "mysql", "weblogic"]
+collector = ["java", "mysql", "oracle_home"]
+
+[[watch]]
+name = "nginx"
+match = ["nginx"]
+collector = ["nginx"]
+
+[[watch]]
+name = "Apache (httpd, Tomcat 등)"
+match = ["apache", "tomcat"]
+collector = []
+
+[[watch]]
+name = "OpenSSL"
+match = ["openssl"]
+collector = []
+
+[[watch]]
+name = "OpenSSH"
+match = ["openssh"]
+collector = []
+
+[[watch]]
+name = "PHP"
+match = ["php"]
+collector = []
+
+[[watch]]
+name = "PostgreSQL"
+match = ["postgresql"]
+collector = []
+
+[[watch]]
+name = "MongoDB"
+match = ["mongodb"]
+collector = []
+
+[[watch]]
+name = "Redis"
+match = ["redis"]
+collector = []
+
+[[watch]]
+name = "Elasticsearch"
+match = ["elastic"]
+collector = []
+
+[[watch]]
+name = "Microsoft (Windows Server 등)"
+match = ["microsoft", "windows"]
+exclude = ["office", "outlook", "word", "excel", "powerpoint", "teams", "edge", "visual studio", "xbox"]   # 서버 점검 대상이 아닌 데스크톱 제품
+collector = []
+
+[[watch]]
+name = "Linux 커널"
+match = ["linux kernel", "linux 커널"]
+collector = []
+
+[[watch]]
+name = "컨테이너 (Docker, containerd, runc, Kubernetes)"
+match = ["docker", "containerd", "runc", "kubernetes"]
+collector = []
+
+[[watch]]
+name = "개발 도구 (GitLab, Jenkins)"
+match = ["gitlab", "jenkins"]
+collector = []
+
+[[watch]]
+name = "Spring"
+match = ["spring"]
+collector = []
+
+# ---------------- 검토 후 제외
+# 등록하지 않기로 한 공지. key(kisa:<nttId>) 또는 cve로 지정하고, 날짜, 사유, 근거(공식 출처 URL 목록 sources)를 남긴다
+# 예)
+# [[dismissed]]
+# key = "kisa:72309"
+# date = "2026-11-20"
+# reason = "MongoDB Atlas(관리형)만 해당, 설치형 제품은 영향 없음"
+# sources = ["https://..."]

@@ -20,6 +20,8 @@ usage() {
 취약점 폴더 (리포 안, 커밋 대상)
   new <취약점ID>                          템플릿으로 루트에 취약점 폴더 생성
   index                                   INDEX.md, CVE_INDEX.csv 갱신과 폴더 형식 검사
+  intake [--days N] [--json 파일] [--issues [--dry-run]]
+                                          KISA 보안공지에서 등록 후보 찾기 (_core/intake.toml)
 
 고객 점검 (리포 밖 $RUNS, 커밋하지 않음)
   init <고객>                             고객 설정 파일 생성 (<SWEEP_RUNS>/<고객>/config.env)
@@ -73,6 +75,8 @@ PY
     [ "$cur" = "$br" ] || echo "작업 브랜치: git checkout -b $br origin/main   (현재 브랜치: ${cur:-없음})" ;;
   index)
     cd "$CORE" && python3 -m vsweep.build_index ;;
+  intake)
+    cd "$CORE" && python3 -m vsweep.intake "$@" ;;
   init)
     c=${1:?고객 필요}; valid_customer "$c"
     mkdir -p "$RUNS/$c"

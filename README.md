@@ -63,6 +63,7 @@ Claude Code는 각 위치의 `CLAUDE.md`를 통해 이 문서들을 자동으로
 
 | 하고 싶은 일 | 요청 예 |
 |---|---|
+| 새 공지 후보 확인 | `새 공지 후보 확인해줘` 또는 `intake Issue 처리해줘` |
 | 새 취약점 등록 | `이 공지 등록해줘 https://www.oracle.com/security-alerts/cspudec2026.html` |
 | 단일 CVE 등록 | `CVE-2026-12345 등록해줘. 원문은 <URL>` |
 | 고객 점검 | `acme 고객(프로파일 acme-sso)에 2026-12-15_oracle_cspudec2026 점검 진행해줘. bastion은 acme-bastion` |
@@ -71,6 +72,16 @@ Claude Code는 각 위치의 `CLAUDE.md`를 통해 이 문서들을 자동으로
 | 수집 대상 확장 | `OpenSSL 공지 대응하게 수집기랑 판정기 확장해줘` |
 
 에이전트는 운영 서버에서 실행하기 전에 대상과 범위를 확인하고, 시범 1-2대 결과를 보고한 뒤 전체로 넓힙니다. SSO 로그인처럼 사람이 해야 하는 단계는 사용자에게 요청합니다.
+
+## 공지 후보 자동 수집
+
+매일 GitHub Actions가 `_core/sweep intake --days 7 --issues`를 돌려, 아직 등록하지 않은 주요 공지를 `[intake]` Issue로 올립니다.
+
+- 소스는 KISA 보호나라 보안공지(보안 업데이트 권고)입니다. 국내 기준으로 주요 벤더 업데이트만 올라오고, Oracle CPU/CSPU도 포함됩니다.
+- Issue에는 KISA 상세 페이지의 CVE 목록과 참고 링크(벤더 원문)가 들어갑니다.
+- 감시 목록(`_core/intake.toml`의 `[[watch]]`)에 든 제품만 후보가 됩니다. 고객 서버 스택 위주로 두었습니다.
+- 후보는 등록 대상이 아니라 검토 대상입니다. 기준표 값은 벤더 원문으로 다시 확인해서 채웁니다.
+- 등록하지 않기로 한 공지는 `[[dismissed]]`에 사유와 근거를 남깁니다.
 
 ## 직접 실행하기
 
@@ -90,6 +101,7 @@ _core/sweep notes $C $V                          # 4. 보고 문안 작성 후
 _core/sweep export $C $V                         #    엑셀 생성
 _core/sweep status $C $V                         # 진행 상황
 
+_core/sweep intake                               # 공지 후보 찾기 (--issues --dry-run: 만들 Issue 미리 보기)
 _core/sweep new 2026-12-15_oracle_cspudec2026    # 새 취약점 폴더
 _core/sweep index                                # INDEX.md, CVE_INDEX.csv 갱신
 ```

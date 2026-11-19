@@ -1,0 +1,27 @@
+# 공지 후보 수집: 매일 KISA 보호나라 보안공지(보안 업데이트 권고)를 읽어 새 후보를 Issue로 만든다.
+# 실행 내용은 _core/sweep intake, 설정은 _core/intake.toml. 공개 공지만 다룬다.
+name: intake
+
+on:
+  schedule:
+    - cron: "0 1 * * *"   # 매일 10:00 KST
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: intake
+  cancel-in-progress: false
+
+jobs:
+  intake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 공지 후보 수집, 새 후보 Issue 생성
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: _core/sweep intake --days 7 --issues
