@@ -85,17 +85,17 @@ def display_product(f):
 
 def display_kind(f):
     k = f["kind"]
-    if k.startswith("Java(컨테이너 실행"):
-        return "Java(컨테이너)"
-    if k.startswith("Java(컨테이너 이미지"):
-        return "Java(이미지 레이어)"
+    if k.startswith(("Java(컨테이너 실행", "nginx(컨테이너 실행")):
+        return k.split("(")[0] + "(컨테이너)"
+    if "이미지 레이어" in k:
+        return k.split("(")[0] + "(이미지 레이어)"
     if k.startswith("Java(실행 중"):
         return "Java"
     return k
 
 
 def run_state(f):
-    if f["kind"].startswith("Java(컨테이너 이미지"):
+    if "이미지 레이어" in f["kind"]:
         return "이미지 레이어"
     return "실행 중" if f["running"] else "미실행"
 
@@ -105,6 +105,9 @@ def services(f):
         return ""
     if f["kind"].startswith("MySQL"):
         return "mysqld (서비스)"
+    if f["kind"].startswith("nginx"):
+        n = len(f["running"].split("; "))
+        return "nginx master" + (f" x{n}" if n > 1 else "") + (" [컨테이너]" if "컨테이너" in f["kind"] else "")
     parts = []
     for seg in f["running"].split("; "):
         seg = re.sub(r"^pid \d+\s*", "", seg).strip()
@@ -244,7 +247,7 @@ def main():
                 ("조사 일시", rep.get("period", "")),
                 ("기준 공지", f"{crit['title']} ({crit.get('revision', '')}, {crit.get('published', '')})\n{crit.get('url', '')}"),
                 ("조사 방식", rep.get("method", "AWS API 자산 조회, SSM Run Command 및 Bastion 경유 SSH로 서버 내부 읽기 전용 스캔")),
-                ("조사 범위", rep.get("scope", "EC2 전체, RDS, Lambda, ECR. 서버 내부는 패키지, 실행 중 JVM, 디스크 전체의 JDK와 MySQL, Oracle Home, 컨테이너"))]
+                ("조사 범위", rep.get("scope", crit.get("report_scope", "EC2 전체, RDS, Lambda, ECR. 서버 내부는 패키지, 실행 중 JVM, 디스크 전체의 JDK와 MySQL, Oracle Home, 컨테이너")))]
     put_table(ws, 5, 1, overview)
     for r in range(5, 5 + len(overview)):
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=4)
@@ -266,6 +269,7 @@ def main():
         "해당 없음": "공지 대상 제품이 없거나 이미 범위 밖 버전",
         "미점검": "정지 또는 접속 수단 없음 (미점검 대상 시트 참고)",
     }
+    desc.update(crit.get("priority_desc", {}))   # 공지별 설명 (criteria.toml)
     summary = [("구분", "서버 수", "발견 항목 수", "설명"),
                ("EC2 전체", f"=COUNTA({ids})", "", f"실행 중 {n_run}대, 그 외 {len(ec2) - n_run}대"),
                ("점검 완료", f'=COUNTIF({method},"SSM")+COUNTIF({method},"Bastion(SSH)")', "", "SSM 또는 Bastion 경유로 스캔을 수행한 서버")]
@@ -332,9 +336,9 @@ def main():
         ws4.cell(r, 3).alignment, ws4.cell(r, 3).number_format = CENTER, "0.0"
     rj = 5 + len(prod) + 1
     ws4.cell(rj, 1, "2. 판정에 사용한 CVE").font = F_SUB
-    cves = [("CVE", "제품", "구성요소", "CVSS 3.1", "인증 없이 원격", "적용 환경", "영향 버전")] + [
+    cves = [("CVE", "제품", "구성요소", "CVSS 3.1", "인증 없이 원격", "적용 환경(조건)", "영향 버전")] + [
         (c["id"], c["product"], c.get("component", ""), c.get("cvss"), "예" if c.get("remote_unauth") else "아니오",
-         SCOPE_TEXT.get(c.get("scope", ""), c.get("scope", "")), c.get("versions", "")) for c in crit.get("cves", [])]
+         SCOPE_TEXT.get(c.get("scope", ""), c.get("scope", "")) or c.get("condition", ""), c.get("versions", "")) for c in crit.get("cves", [])]
     put_table(ws4, rj + 1, 1, cves)
     for r in range(rj + 2, rj + 1 + len(cves)):
         for c in (4, 5):
@@ -386,9 +390,9 @@ def main():
              ("2. 서버 스캔 (SSM)", "SSM Run Command(AWS-RunShellScript, AWS-RunPowerShellScript)로 읽기 전용 수집 스크립트 실행. 코멘트: nxt-vuln-sweep read-only inventory"),
              ("3. 서버 스캔 (Bastion)", f"SSM 에이전트가 없는 Linux {n_bastion}대는 Bastion 경유 SSH로 같은 스크립트 실행. 대상 서버에 파일을 남기지 않음"),
              ("4. 판정", "수집 결과를 공지의 영향 버전과 대조해 항목별, 서버별로 판정"),
-             ("수집 항목", "패키지 목록, 실행 중 JVM(libjvm.so 또는 jvm.dll을 로드한 모든 프로세스와 실행 버전), 로컬 디스크 전체의 java, mysqld, weblogic.jar 등, Oracle Home과 OPatch 결과, Docker 컨테이너와 이미지 레이어, CPU 모델"),
+             ("수집 항목", crit.get("collected_items", "패키지 목록, 실행 중 JVM(libjvm.so 또는 jvm.dll을 로드한 모든 프로세스와 실행 버전), 로컬 디스크 전체의 java, mysqld, weblogic.jar 등, Oracle Home과 OPatch 결과, Docker 컨테이너와 이미지 레이어, CPU 모델")),
              ("부하 최소화", f"스캔 프로세스의 CPU, 디스크 I/O 우선순위를 최저로 낮춰 실행. 서버당 소요 시간 {timing or '-'}")]
-    for k, t in enumerate(rep.get("limitations", DEFAULT_LIMITS), start=1):
+    for k, t in enumerate(rep.get("limitations", crit.get("limitations", DEFAULT_LIMITS)), start=1):
         steps.append((f"한계 {k}", t))
     put_table(ws6, 3, 1, steps, [22, 110])
     for r in range(4, 3 + len(steps)):

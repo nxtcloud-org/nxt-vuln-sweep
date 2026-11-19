@@ -2,7 +2,7 @@
 # 규칙
 #   - 값은 반드시 공식 원문에서 옮긴다. 2차 보도, 블로그 값은 쓰지 않는다 (참고 사항은 advisory.md에만 적는다).
 #   - 루트 키(id, title, judgement_rules, next_releases 등)는 모든 [표] 헤더보다 위에 둔다. TOML은 헤더 아래 키를 그 표에 넣는다.
-#   - 이번 공지에 해당하지 않는 제품 섹션([java], [mysql], [oracle_home])은 지운다. 섹션이 없으면 그 제품 발견 항목은 "참고"로 분류된다.
+#   - 이번 공지에 해당하지 않는 제품 섹션([java], [mysql], [oracle_home], [nginx])은 지운다. 섹션이 없는 제품은 판정하지 않고 보고서에도 넣지 않는다.
 
 id = "YYYY-MM-DD_vendor_key"          # 폴더명과 같아야 함 (YYYY-MM-DD_벤더_공지키 또는 CVE-YYYY-NNNN, _core/sweep index 가 검사)
 vendor = "vendor"                      # 소문자 (oracle, openssl, apache, microsoft ...)
@@ -12,6 +12,7 @@ url = "https://..."
 published = 2026-01-01
 revision = "Rev 1"
 total_patches = 0                      # 원문에 수치가 없으면 지운다
+# min_collector = "2026.11.2"          # 이 공지에 필요한 최소 수집기 버전 (META collector). 더 오래된 결과는 judge가 재수집 대상으로 알림
 
 judgement_rules = [
   "보고서 판정 기준 시트에 들어갈 문장. 고객이 읽는 문장으로 쓴다.",
@@ -20,6 +21,12 @@ judgement_rules = [
 next_releases = [
   # { date = "2026-01-20", type = "CPU" },
 ]
+
+# 선택: 보고서 문구를 공지에 맞게 바꿀 때 (없으면 Java 공지 기준 기본 문구)
+# priority_desc = { P1 = "...", P2 = "...", P3 = "..." }     # 요약 시트 우선순위 설명
+# report_scope = "EC2 전체. 서버 내부는 ..."                 # 요약 시트 조사 범위 (notes.toml scope가 우선)
+# collected_items = "패키지 목록, ..."                        # 점검 방법 시트 수집 항목
+# limitations = ["...", "..."]                                # 점검 방법 시트 한계 (notes.toml limitations가 우선)
 
 # ---------------- Java (Oracle Java SE, OpenJDK 공지일 때)
 [java]
@@ -58,6 +65,22 @@ instant_client_note = "공지 대상 목록에 없음(클라이언트 라이브�
 Client = ["11.", "12.", "18."]
 Database = ["11.", "12.", "18."]
 
+# ---------------- nginx (nginx.org 보안 공지일 때)
+[nginx]
+supported_branches = ["1.30", "1.31"]          # nginx.org의 현재 stable, mainline 계열. 그 밖의 계열은 비고에 지원 종료로 표시
+unsupported_note = "지원 종료 계열: 1.30.7 이상으로 올려야 함"
+plus_note = "NGINX Plus: F5 공지의 Plus 버전표로 확인"
+
+[nginx.controller_notes]                        # NGXCTL 종류별 비고
+"ingress-nginx" = "Kubernetes ingress-nginx 컨트롤러 컨테이너"
+"f5-nginx-ingress" = "F5 NGINX Ingress Controller 컨테이너"
+
+# 배포판 패키지의 수정 버전. 키는 META os_id(ID-VERSION_ID, rhel 계열은 주 버전만도 됨). 배포판 공식 공지에서만 옮긴다
+[nginx.distro_fixed."amzn-2023"]
+version = "0.0.0-0.amzn2023.0.0"
+kind = "rpm"                                    # rpm | deb
+source = "ALAS2023-YYYY-NNNN (YYYY-MM-DD)"
+
 # ---------------- 보고서 판정 기준 시트용 제품 표
 [[products]]
 name = "제품명"
@@ -67,6 +90,11 @@ note = ""
 
 # ---------------- 판정에 쓰는 제품의 CVE (CVE_INDEX.csv에 들어감)
 # id 형식: CVE-YYYY-NNNN... (대문자). scope: server | client | both (원문에 구분이 없으면 지운다)
+# nginx CVE는 판정용 키를 더한다
+#   range = ["1.9.5", "1.31.8"]      nginx.org Vulnerable 범위(포함)
+#   fixed = ["1.31.9", "1.30.7"]     nginx.org Not vulnerable (같은 계열에서 그 이상이면 수정됨)
+#   cond = "http2"                   사용 조건 키 (_core/vsweep/products.py NGX_CONDS)
+#   condition = "HTTP/2 사용 시"      보고서 판정 기준 시트에 쓰는 조건 설명
 [[cves]]
 id = "CVE-0000-0000"
 product = "제품명"
