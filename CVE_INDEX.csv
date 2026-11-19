@@ -23,6 +23,8 @@ CVE-2026-91570,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Inte
 CVE-2026-91583,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-91585,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-92392,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: Packaging (curl),8.1,Y,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+CVE-2026-106023,2026-11-11_apache_httpd-2-4-71,Apache HTTP Server,mod_md,7.5,Y,,2.4.30-2.4.70 (수정 2.4.71)
+CVE-2026-109163,2026-11-11_apache_httpd-2-4-71,Apache HTTP Server,mod_vhost_alias,5.9,Y,,2.4.69-2.4.70 (수정 2.4.71)
 CVE-2026-113425,2026-11-18_nginx_1-31-9,nginx,ngx_mail_proxy_module,8.1,Y,,"0.5.33-1.31.8 (수정 1.31.9, 1.30.7)"
 CVE-2026-114122,2026-11-17_oracle_cspunov2026,MySQL Workbench,Workbench (electron),3.9,N,,26.10.0
 CVE-2026-114819,2026-11-17_oracle_cspunov2026,Oracle Database Server,Oracle Text,9.9,N,,"19.3-19.32, 21.3-21.24, 23.4.0-23.26.3"
@@ -79,6 +81,7 @@ CVE-2026-116333,2026-11-12_postgresql_18-7,PostgreSQL,core server,6.5,N,,"18, 17
 CVE-2026-116335,2026-11-12_postgresql_18-7,PostgreSQL,core server,8.8,N,,"18, 17, 16, 15, 14 계열 (수정 18.7, 17.12, 16.16, 15.20, 14.25)"
 CVE-2026-116336,2026-11-12_postgresql_18-7,PostgreSQL,core server,8.8,N,,"18, 17, 16, 15, 14 계열 (수정 18.7, 17.12, 16.16, 15.20, 14.25)"
 CVE-2026-118899,2026-11-18_nginx_1-31-9,nginx,ngx_http_core_module (TLSv1.3),7.5,Y,,"1.13.0-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-119618,2026-11-11_apache_httpd-2-4-71,Apache HTTP Server,mod_http2 (assign_headers),8.1,Y,,2.4.55-2.4.70 (수정 2.4.71)
 CVE-2026-120139,2026-11-12_postgresql_18-7,PostgreSQL,core server,8.8,N,,"18, 17, 16, 15, 14 계열 (수정 18.7, 17.12, 16.16, 15.20, 14.25)"
 CVE-2026-120141,2026-11-12_postgresql_18-7,PostgreSQL,core server,8.8,N,,"18, 17, 16, 15, 14 계열 (수정 18.7, 17.12, 16.16, 15.20, 14.25)"
 CVE-2026-120142,2026-11-12_postgresql_18-7,PostgreSQL,core server,8.8,N,,"18, 17 계열 (수정 18.7, 17.12)"

@@ -1,0 +1,262 @@
+# 판정 기준표: Apache HTTP Server 2.4.71 보안 수정 (2026-11-11)
+# 영향 범위, 수정 버전, 심각도는 Apache httpd 2.4 취약점 페이지에서 옮겼다 (2026-11-19 확인).
+# CVSS는 CVE 레코드의 CISA ADP 점수(CNA인 Apache는 점수를 매기지 않음). 배포판 수정 버전은 각 배포판 공식 공지에서 옮겼다.
+# 원문: https://httpd.apache.org/security/vulnerabilities_24.html
+
+id = "2026-11-11_apache_httpd-2-4-71"
+vendor = "apache"
+vendor_label = "Apache httpd"
+title = "Fixed in Apache HTTP Server 2.4.71"
+url = "https://httpd.apache.org/security/vulnerabilities_24.html"
+published = 2026-11-11
+revision = "2026-11-19 확인"
+min_collector = "2026.11.3"   # SW 레코드(httpd)가 들어간 수집기 버전
+
+judgement_rules = [
+  "Apache httpd 2.4 취약점 페이지의 영향 범위(Affects)와 수정 버전(2.4.71)으로 판정했습니다.",
+  "취약점마다 해당 모듈을 쓸 때만 공격할 수 있습니다(mod_http2, mod_md, mod_vhost_alias). 실행 중인 httpd에 실제로 올라온 모듈과 설정 지시어로 조건을 확인했고, 영향 버전이라도 조건이 하나도 없으면 P3로 분류했습니다.",
+  "Amazon Linux, RHEL, Ubuntu, Debian 패키지는 보안 수정을 반영해도 httpd 버전 번호가 바뀌지 않으므로(백포트) 버전 번호 대신 배포판 공지의 수정 패키지 버전과 비교했습니다. RHEL은 mod_http2가 별도 패키지라 그 패키지 버전을 비교했습니다.",
+  "배포판 공지에 수정 패키지가 있는데 설치 버전이 낮으면 P1, 배포판 공지를 확인하지 못한 CVE가 남으면 P2(배포판 확인 필요)로 분류했습니다.",
+  "공식 httpd 컨테이너 이미지와 소스 빌드는 버전 번호로 판정했습니다.",
+  "실행 파일을 교체한 뒤 재시작하지 않은 httpd는 이전 바이너리로 동작하므로, 재시작 전까지는 수정되지 않은 것으로 봅니다.",
+  "CVSS는 CVE 레코드의 CISA ADP 점수입니다. Apache는 심각도(critical, important, low)만 매깁니다.",
+]
+
+next_releases = []
+
+priority_desc = { P1 = "httpd가 영향 버전으로 실행 중이고 해당 모듈을 쓰거나 확인하지 못함(소스 빌드, 컨테이너), 또는 배포판 수정 패키지가 나왔는데 설치하지 않음", P2 = "배포판 httpd가 실행 중이고 배포판 수정 여부를 확인하지 못한 CVE가 있음", P3 = "영향 버전이 설치만 되어 있거나(미실행, 이미지 레이어), 실행 중이지만 해당 모듈을 쓰지 않음", "확인 필요" = "버전을 읽지 못한 항목이 있음" }
+
+report_scope = "EC2 전체, ECS, EKS, Elastic Beanstalk, ECR. 서버 내부는 패키지, 실행 중 httpd와 로드된 모듈, 설정 지시어 사용 여부, 디스크 전체의 httpd 바이너리, 컨테이너"
+collected_items = "패키지 목록(httpd, apache2, mod_http2, mod_md), 실행 중 httpd 부모 프로세스와 실행 바이너리의 버전(컨테이너 포함), 프로세스에 올라온 모듈(mod_*.so), 설정 지시어 사용 여부(Protocols h2, MDomain, VirtualDocumentRoot, 설정 값은 수집하지 않음), 로컬 디스크 전체의 httpd 바이너리와 컨테이너 이미지 레이어"
+limitations = [
+  "모듈은 프로세스 메모리에 올라온 공유 모듈(mod_*.so)로 판단하므로, httpd에 정적으로 컴파일된 모듈은 보이지 않음",
+  "설정 확인은 지시어 사용 여부만 보는 단순 대조이며, 특정 VirtualHost에만 적용되는지는 확인하지 않음",
+  "Windows의 httpd는 모듈과 설정을 읽지 않아 조건 해당 여부를 확인하지 못함",
+  "ECR 이미지와 Fargate 작업 안의 httpd는 확인하지 않음(EC2에서 실행 중인 컨테이너와 디스크의 이미지 레이어만 확인)",
+  "외부 노출은 인터넷용 ALB/NLB 대상 등록 기준이며, 등록 포트가 httpd 포트인지는 서비스별 확인 필요",
+]
+
+# ---------------- 범용 소프트웨어 판정 (수집기 SW 레코드)
+[software.httpd]
+label = "Apache httpd"
+branch_parts = 2
+supported_branches = ["2.4"]
+unsupported_note = "지원 종료 계열(2.2 이하): 수정 버전 없음"
+distro_backport = true
+package_re = "^(httpd|apache2-bin)$"
+
+# 배포판 수정 버전 (2026-11-19 확인). os는 META os_id. cves를 비우면 3건 모두
+# Amazon Linux
+[[software.httpd.distro_fixed]]
+os = "amzn-2"
+package = "httpd"
+version = "2.4.71-1.amzn2.0.1"
+kind = "rpm"
+source = "ALAS2-2026-4114 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "amzn-2023"
+package = "httpd"
+version = "2.4.71-1.amzn2023.0.1"
+kind = "rpm"
+source = "ALAS2023-2026-3458 (2026-11-12)"
+cves = ["CVE-2026-119618", "CVE-2026-109163"]
+
+[[software.httpd.distro_fixed]]
+os = "amzn-2023"
+status = "not_affected"
+source = "Amazon Linux 2023 Not Affected (explore.alas.aws.amazon.com)"
+cves = ["CVE-2026-106023"]
+
+# Ubuntu: USN-9090-1 (2026-11-12), 패키지 apache2-bin
+[[software.httpd.distro_fixed]]
+os = "ubuntu-14.04"
+package = "apache2-bin"
+version = "2.4.7-1ubuntu4.22+esm19"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-16.04"
+package = "apache2-bin"
+version = "2.4.18-2ubuntu3.17+esm24"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-18.04"
+package = "apache2-bin"
+version = "2.4.29-1ubuntu4.27+esm15"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-20.04"
+package = "apache2-bin"
+version = "2.4.41-4ubuntu3.23+esm11"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-22.04"
+package = "apache2-bin"
+version = "2.4.52-1ubuntu4.27"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-24.04"
+package = "apache2-bin"
+version = "2.4.58-1ubuntu8.19"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-26.04"
+package = "apache2-bin"
+version = "2.4.66-2ubuntu2.8"
+kind = "deb"
+source = "USN-9090-1 (2026-11-12)"
+
+# Debian
+[[software.httpd.distro_fixed]]
+os = "debian-12"
+package = "apache2-bin"
+version = "2.4.71-1~deb12u1"
+kind = "deb"
+source = "DLA-4902-1"
+
+[[software.httpd.distro_fixed]]
+os = "debian-13"
+package = "apache2-bin"
+version = "2.4.71-1~deb13u1"
+kind = "deb"
+source = "DSA-6620-1"
+
+# RHEL: CVE-2026-119618은 mod_http2 패키지에서 수정. 나머지 2건은 Red Hat 자료 없음(2026-11-19)
+[[software.httpd.distro_fixed]]
+os = "rhel-10"
+package = "mod_http2"
+version = "2.0.29-5.el10_3.1"
+kind = "rpm"
+source = "RHSA-2026:98978 (2026-11-11)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-10.0"
+package = "mod_http2"
+version = "2.0.29-2.el10_0.3"
+kind = "rpm"
+source = "RHSA-2026:98953 (2026-11-11, EUS)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-10.2"
+package = "mod_http2"
+version = "2.0.29-4.el10_2.3"
+kind = "rpm"
+source = "RHSA-2026:98979 (2026-11-11, EUS)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-9"
+package = "mod_http2"
+version = "2.0.26-7.el9_9.1"
+kind = "rpm"
+source = "RHSA-2026:98981 (2026-11-11)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-9.4"
+package = "mod_http2"
+version = "2.0.26-2.el9_4.4"
+kind = "rpm"
+source = "RHSA-2026:98968 (2026-11-11, SAP)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-9.6"
+package = "mod_http2"
+version = "2.0.26-4.el9_6.3"
+kind = "rpm"
+source = "RHSA-2026:98954 (2026-11-11, EUS)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-9.8"
+package = "mod_http2"
+version = "2.0.26-6.el9_8.3"
+kind = "rpm"
+source = "RHSA-2026:98982 (2026-11-11, EUS)"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-8"
+status = "not_affected"
+source = "Red Hat: RHEL 8 Not affected"
+cves = ["CVE-2026-119618"]
+
+[[software.httpd.distro_fixed]]
+os = "rhel-7"
+status = "not_affected"
+source = "Red Hat: RHEL 7 Not affected"
+cves = ["CVE-2026-119618"]
+
+# ---------------- 보고서 판정 기준 시트용
+[[products]]
+name = "Apache HTTP Server"
+versions = "2.4.30-2.4.70 (CVE별 시작 버전은 아래 표), 수정 버전 2.4.71"
+max_cvss = 8.1
+note = "critical 1, important 1, low 1. 모두 인증 없이 원격"
+
+[[products]]
+name = "mod_h2 (GitHub 배포본)"
+versions = "2.0.8-2.0.42"
+max_cvss = 8.1
+note = "CVE-2026-119618, httpd에 별도로 넣은 경우"
+
+# ---------------- 판정에 쓰는 CVE (취약점 페이지 순서)
+[[cves]]
+id = "CVE-2026-119618"
+product = "Apache HTTP Server"
+component = "mod_http2 (assign_headers)"
+cvss = 8.1
+remote_unauth = true
+severity = "critical"
+title = "mod_http2: heap corruption and RCE in assign_headers"
+versions = "2.4.55-2.4.70 (수정 2.4.71)"
+sw = ["httpd"]
+range = ["2.4.55", "2.4.70"]
+fixed = ["2.4.71"]
+cond = ["mod_http2", "h2"]
+condition = "mod_http2 로드, Protocols에 h2 또는 h2c"
+
+[[cves]]
+id = "CVE-2026-106023"
+product = "Apache HTTP Server"
+component = "mod_md"
+cvss = 7.5
+remote_unauth = true
+severity = "important"
+title = "mod_md NULL pointer dereference leads to child process crash"
+versions = "2.4.30-2.4.70 (수정 2.4.71)"
+sw = ["httpd"]
+range = ["2.4.30", "2.4.70"]
+fixed = ["2.4.71"]
+cond = ["mod_md"]
+condition = "mod_md 로드"
+
+[[cves]]
+id = "CVE-2026-109163"
+product = "Apache HTTP Server"
+component = "mod_vhost_alias"
+cvss = 5.9
+remote_unauth = true
+severity = "low"
+title = "mod_vhost_alias 1 byte stack buffer overwrite (after CVE-2026-63292)"
+versions = "2.4.69-2.4.70 (수정 2.4.71)"
+sw = ["httpd"]
+range = ["2.4.69", "2.4.70"]
+fixed = ["2.4.71"]
+cond = ["mod_vhost_alias", "vhost_alias_conf"]
+condition = "mod_vhost_alias 로드, VirtualDocumentRoot 계열 지시어 사용"
