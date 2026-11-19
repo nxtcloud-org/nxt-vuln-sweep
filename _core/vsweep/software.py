@@ -69,14 +69,17 @@ def reach(cve, flags):
         return "met"
     if flags is None:
         return "unknown"
+    states = []
     for c in cond:
-        if c.startswith("mod_") and not flags.get("_mods_known"):
-            return "unknown"
-        if c not in flags:
-            return "unknown"
-        if not flags[c]:
-            return "unmet"
-    return "met"
+        if c.startswith("mod_"):   # 모듈 목록을 읽었으면 목록에 없는 모듈은 없는 것
+            states.append(("met" if flags.get(c) else "unmet") if flags.get("_mods_known") else "unknown")
+        elif c not in flags:
+            states.append("unknown")
+        else:
+            states.append("met" if flags[c] else "unmet")
+    if "unmet" in states:   # 조건은 모두 만족해야 하므로 하나라도 없으면 해당 없음
+        return "unmet"
+    return "unknown" if "unknown" in states else "met"
 
 
 def distro_resolution(cve_id, entries, pkgs):
