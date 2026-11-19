@@ -100,7 +100,9 @@ recommendations에 넣을 것
   - README.md의 기준표 작성일을 고칩니다.
   - `_core/sweep index`로 색인을 갱신합니다.
 - 원문 읽는 방법
-  - WebFetch와 curl은 403입니다. User-Agent 위장으로 우회하지 않습니다. Claude in Chrome으로 페이지를 열고 JavaScript로 표를 추출합니다.
+  - WebFetch는 403입니다. curl 기본 요청(User-Agent를 바꾸지 않음)으로는 받아집니다(2026-11-19 확인). 403이 나도 User-Agent 위장으로 우회하지 않습니다.
+  - curl로 받은 HTML은 Python 표준 라이브러리 `html.parser`로 표를 읽을 수 있습니다. 2026-11 원문은 표 23개, Risk Matrix 21개, 데이터 행 655개(각 표의 두 번째 머리글 행 제외)였습니다.
+  - curl도 막히면 Claude in Chrome으로 페이지를 열고 JavaScript로 표를 추출합니다.
   - 첫 표가 Affected Products and Versions입니다(제품, 버전, Patch Availability Document).
   - 첫 행에 `CVE ID`가 들어간 표가 Risk Matrix입니다. 표 앞의 가장 가까운 h3/h4가 제품군 이름입니다.
   - 열 위치는 표마다 다릅니다. Product 열, Package and/or Privilege Required 열이 있는지 헤더를 보고 계산합니다. 열 번호는 0부터 셉니다.
