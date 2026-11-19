@@ -76,7 +76,7 @@
      - 점검 절차, 단계별 추가 확인, 판정 검토 포인트, 보고 문안 가이드, 기준표 갱신 방법(원문 읽는 법), 하지 말 것
      - 같은 벤더의 이전 폴더 AGENTS.md를 출발점으로 쓰면 원문 추출 방법 같은 내용을 다시 쓰지 않아도 됩니다.
 5. 수집기가 대상 제품을 잡는지 확인합니다.
-   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage), nginx 계열(nginx, OpenResty, Angie, NGINX Plus 바이너리와 설정의 지시어 사용 여부, 컨테이너 포함)
+   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage), nginx 계열(nginx, OpenResty, Angie, NGINX Plus 바이너리와 설정의 지시어 사용 여부, 컨테이너 포함), 범용 SW 레코드(PostgreSQL 서버와 클라이언트 도구, Apache httpd와 로드된 모듈, Node.js 앱의 mongodb 패키지)
    - 그 밖의 제품(OpenSSL, Log4j 등)은 수집기와 판정기를 확장해야 합니다. 절차는 `_core/COLLECTORS.md` 끝부분에 있습니다.
    - criteria.toml에 제품 섹션이 없는 제품은 판정하지 않고 보고서에도 넣지 않습니다. 이번 공지와 무관한 섹션은 지웁니다.
    - 판정기는 `_core/vsweep/products.py`에 함수를 만들고, `_core/vsweep/judge.py`에서 레코드 종류별로 호출합니다.
@@ -229,6 +229,9 @@ _core/sweep export $C $V
 | 배포판 nginx는 백포트해도 버전 문자열이 그대로(예: Ubuntu 1.18.0) | 패키지 버전을 배포판 공지의 수정 버전과 비교(`[nginx.distro_fixed]`). 공지가 없으면 P2로 두고 배포판 확인 |
 | nginx 실행 파일 `(deleted)` | 패키지 갱신 후 재기동하지 않음. 패키지 버전과 무관하게 이전 바이너리가 동작하므로 배포판 수정 버전 비교를 하지 않음 |
 | 컨테이너 안 절대 경로 심볼릭 링크 | `/proc/<pid>/root` 경유로 읽으면 호스트 기준으로 풀림. 수집기가 링크를 읽어 컨테이너 루트 기준으로 다시 붙임 |
+| 다른 사용자 프로세스의 `/proc/<pid>/exe`, `root` | 권한(ptrace 제한)에 따라 읽히지 않음. 수집기는 호스트 프로세스를 `/` 기준으로 읽고, exe를 못 읽으면 명령행 첫 인자를 씀 |
+| PostgreSQL 배포판 패키지 | 배포판도 업스트림 마이너 버전을 그대로 따라가므로 버전 번호로 판정. 지원 종료 계열(13 이하)은 배포판이 백포트할 수 있어 P2 |
+| Apache httpd 배포판 패키지 | 백포트라 버전 번호가 그대로. RHEL은 mod_http2가 별도 패키지. `distro_fixed`에 패키지 이름까지 적음 |
 
 ## 커밋 전 검사
 

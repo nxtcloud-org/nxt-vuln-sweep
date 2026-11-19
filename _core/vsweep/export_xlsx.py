@@ -85,7 +85,7 @@ def display_product(f):
 
 def display_kind(f):
     k = f["kind"]
-    if k.startswith(("Java(컨테이너 실행", "nginx(컨테이너 실행")):
+    if "(컨테이너 실행" in k:
         return k.split("(")[0] + "(컨테이너)"
     if "이미지 레이어" in k:
         return k.split("(")[0] + "(이미지 레이어)"
@@ -108,6 +108,9 @@ def services(f):
     if f["kind"].startswith("nginx"):
         n = len(f["running"].split("; "))
         return "nginx master" + (f" x{n}" if n > 1 else "") + (" [컨테이너]" if "컨테이너" in f["kind"] else "")
+    if not f["kind"].startswith("Java"):   # SW 레코드(PostgreSQL, httpd, Node.js 앱 등)
+        n = len(f["running"].split("; "))
+        return f"{f['vendor']} 프로세스" + (f" x{n}" if n > 1 else "") + (" [컨테이너]" if "컨테이너" in f["kind"] else "")
     parts = []
     for seg in f["running"].split("; "):
         seg = re.sub(r"^pid \d+\s*", "", seg).strip()

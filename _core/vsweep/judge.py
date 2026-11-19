@@ -9,7 +9,7 @@
   P3  영향 버전 또는 EOL 버전이 설치만 되어 있음 (미실행, 컨테이너 이미지 레이어 포함)
       nginx는 영향 버전으로 실행 중이어도 수집한 설정에 공지의 사용 조건이 하나도 없으면 P3
 
-criteria.toml에 제품 섹션([java], [mysql], [oracle_home], [nginx])이 없으면 그 제품의 수집 결과는 판정하지 않는다(findings에 넣지 않음).
+criteria.toml에 제품 섹션([java], [mysql], [oracle_home], [nginx], [software.<제품>])이 없으면 그 제품의 수집 결과는 판정하지 않는다(findings에 넣지 않음).
   확인 필요  버전을 읽지 못했거나 사람이 대조해야 하는 항목
   해당 없음  공지 대상이 아니거나 범위 밖 버전
 """
@@ -21,10 +21,11 @@ from collections import OrderedDict
 from .common import PRIO_ORDER, find_advisory, load_criteria, load_inventory, load_scan_log, read_tsv, vtuple, write_csv
 from .products import (AFFECTED, NGX_CONDS, NGX_FORKS, avx512vbmi_guess, java_judge, java_vendor, mysql_judge, mysql_version,
                        nginx_flags, nginx_judge, nginx_origin, nginx_version, oracle_home_judge, parse_java_version)
+from .software import software_findings
 
 JDK1_RE = re.compile(r"(jdk|jre)[-_]?1\.?[0-7]\.?\d", re.I)
 # 수집 레코드 종류 -> criteria 제품 섹션. 여기 없는 종류(PKG, PROC, DOCKER, FIND)는 항상 본다 (PROC은 MySQL 실행 여부에도 씀)
-RECORD_SCOPE = {"JAVA": "java", "MYSQL": "mysql", "FILE": "oracle_home", "OHOME": "oracle_home",
+RECORD_SCOPE = {"SW": "software", "JAVA": "java", "MYSQL": "mysql", "FILE": "oracle_home", "OHOME": "oracle_home",
                 "OREG": "oracle_home", "OPATCH": "oracle_home", "NGINX": "nginx", "NGXCONF": "nginx", "NGXCTL": "nginx"}
 # 바이너리(/usr/sbin/nginx)를 설치하는 패키지 이름. 앞에 있는 것을 먼저 본다
 NGX_PKG_NAMES = ("nginx", "nginx-core", "nginx-full", "nginx-light", "nginx-extras", "nginx-plus")
@@ -138,7 +139,7 @@ def nginx_findings(rows, crit, add):
 def judge_host(rows, crit, common):
     vendor_label = crit.get("vendor_label", crit.get("vendor", ""))
     jc, mc, oc = crit.get("java"), crit.get("mysql"), crit.get("oracle_home")
-    scope = {k for k in ("java", "mysql", "oracle_home", "nginx") if k in crit}
+    scope = {k for k in ("java", "mysql", "oracle_home", "nginx", "software") if k in crit}
     rows = [r for r in rows if RECORD_SCOPE.get(r[0], "") in scope | {""}
             and not (r[0] == "TRUNC" and len(r) > 1 and RECORD_SCOPE.get(r[1], "") not in scope | {""})]
     out = []
@@ -231,6 +232,8 @@ def judge_host(rows, crit, common):
         add("Java(컨테이너 이미지 레이어)", "image", f"레이어 {cnt}개", vendor, raw, "", judged)
     if "nginx" in scope:
         nginx_findings(rows, crit, add)
+    if "software" in scope:
+        software_findings(rows, crit, add)
     return out
 
 
@@ -238,6 +241,7 @@ def main():
     adv_dir, run_dir = find_advisory(sys.argv[1]), os.path.abspath(sys.argv[2])
     crit = load_criteria(adv_dir)
     primary = set((crit.get("java") or {}).get("primary_vendors", [])) | {"MySQL", "Oracle"}
+    primary |= {sc.get("label", k) for k, sc in (crit.get("software") or {}).items()}   # 지원 종료 계열로 실행 중이면 P1
     ec2, ssm, _ = load_inventory(run_dir)
     meta_by_id = {i["id"]: i for i in ec2}
     scan_log = load_scan_log(run_dir)

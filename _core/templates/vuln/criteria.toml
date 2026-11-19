@@ -81,6 +81,23 @@ version = "0.0.0-0.amzn2023.0.0"
 kind = "rpm"                                    # rpm | deb
 source = "ALAS2023-YYYY-NNNN (YYYY-MM-DD)"
 
+# ---------------- 범용 소프트웨어 (수집기 SW 레코드: postgresql, postgresql-client, httpd, npm-mongodb)
+# 설명은 _core/vsweep/software.py 첫머리. 공지와 무관한 제품 표는 지운다
+[software.httpd]
+label = "Apache httpd"
+branch_parts = 2                 # 2.4.x 계열 안에서만 수정 버전 비교
+supported_branches = ["2.4"]
+distro_backport = true           # 배포판 패키지는 버전 번호 대신 distro_fixed로 판단
+package_re = "^(httpd|apache2-bin)$"
+
+[[software.httpd.distro_fixed]]
+os = "ubuntu-24.04"              # META os_id. rhel-9 처럼 주 버전만 쓰면 rhel-9.x 전체
+package = "apache2-bin"
+version = "0.0.0-0ubuntu0"
+kind = "deb"                     # deb | rpm
+source = "USN-0000-1 (YYYY-MM-DD)"
+cves = []                        # 비우면 이 제품의 모든 CVE. status = "not_affected" 로 해당 없음 표시
+
 # ---------------- 보고서 판정 기준 시트용 제품 표
 [[products]]
 name = "제품명"
@@ -95,6 +112,10 @@ note = ""
 #   fixed = ["1.31.9", "1.30.7"]     nginx.org Not vulnerable (같은 계열에서 그 이상이면 수정됨)
 #   cond = "http2"                   사용 조건 키 (_core/vsweep/products.py NGX_CONDS)
 #   condition = "HTTP/2 사용 시"      보고서 판정 기준 시트에 쓰는 조건 설명
+# [software] 제품 CVE는 판정용 키를 더한다
+#   sw = ["httpd"]                   해당 제품 키
+#   range = ["2.4.55", "2.4.70"]     영향 범위(포함), fixed = ["2.4.71"] 같은 계열 수정 버전
+#   cond = ["mod_http2", "h2"]       사용 조건 플래그(모두 1이어야 해당). 없으면 조건 없음
 [[cves]]
 id = "CVE-0000-0000"
 product = "제품명"

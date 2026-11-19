@@ -1,5 +1,5 @@
 #!/bin/bash
-# nxt-vuln-sweep 호스트 수집기 (Linux). 공지와 무관하게 Java, MySQL, Oracle 계열, nginx 계열 설치/실행 정보를 모은다.
+# nxt-vuln-sweep 호스트 수집기 (Linux). 공지와 무관하게 Java, MySQL, Oracle 계열, nginx 계열, PostgreSQL, Apache httpd, Node.js mongodb 패키지의 설치/실행 정보를 모은다.
 # 출력 형식은 _core/COLLECTORS.md 참고. 탐지 대상을 늘릴 때는 FIND 패턴과 README를 함께 고친다.
 # 읽기 전용: 패키지 목록, 파일, /proc 조회와 버전 출력(java -version 등)만 하고 아무것도 설치하거나 바꾸지 않는다.
 # nginx 바이너리는 실행하지 않고(nginx -t, -T는 로그 파일과 임시 디렉터리를 만들 수 있음) 내장 문자열만 읽는다.
@@ -88,9 +88,81 @@ ngx_ctr_pkg() {
   [ -n "$v" ] && printf 'apk:%s' "$v"
 }
 
+# ---- SW 도우미: PostgreSQL, Apache httpd, Node.js 앱의 mongodb 패키지 (레코드 SW, 형식은 COLLECTORS.md)
+# 버전은 바이너리 내장 문자열로 읽는다(실행하지 않음). 컨테이너 파일은 /proc/<pid>/root 를 앞에 붙여 읽는다
+sw_ver() {   # $1 제품, $2 파일
+  case "$1" in
+    postgresql) grep -aoE 'PostgreSQL [0-9]+(\.[0-9]+){0,2}(beta[0-9]+|rc[0-9]+)? (\([^)]{0,80}\) )?on ' "$2" 2>/dev/null | head -1 | awk '{print $2}' ;;
+    postgresql-client) grep -aoE '(pg_dump|psql) \(PostgreSQL\) [0-9]+(\.[0-9]+){0,2}' "$2" 2>/dev/null | head -1 | awk '{print $3}' ;;
+    httpd) grep -aoE 'Apache/2\.[0-9]+\.[0-9]+' "$2" 2>/dev/null | head -1 | cut -d/ -f2 ;;
+    npm-mongodb) grep -q '"name": *"mongodb"' "$2" 2>/dev/null && grep -m1 -oE '"version": *"[^"]+"' "$2" | sed -E 's/.*"([^"]+)"$/\1/' ;;
+  esac
+}
+# PostgreSQL 바이너리($2, 루트 $1 기준)와 같은 설치의 확장 라이브러리 존재 여부 (CVE 사용 조건 판단용)
+pg_flags() {
+  local root=$1 bin=$2 dir out="" x c hit
+  [ -n "$bin" ] || { printf 'libdir=unknown'; return; }
+  dir=$(dirname "$bin")
+  for x in plperl pltcl dblink dict_int; do
+    hit=0
+    for c in "$dir/../lib" "$dir/../lib64/pgsql" "$dir/../lib/pgsql" "$dir/../lib/postgresql" /usr/lib64/pgsql /usr/lib/postgresql; do
+      [ -e "$root$c/$x.so" ] && { hit=1; break; }
+    done
+    out="$out $x=$hit"
+  done
+  printf '%s' "${out# }"
+}
+# Apache 설정: 메인 설정($2, 루트 $1)부터 Include/IncludeOptional을 따라가며 파일 목록 출력 (최대 300개)
+ap_conf_files() {
+  local root=$1 conf=$2 sr n=0 f g inc seen=" "
+  local -a queue=("$conf")
+  sr=$(sed -nE 's/^[[:space:]]*ServerRoot[[:space:]]+"?([^"[:space:]]+)"?.*/\1/Ip' "$root$conf" 2>/dev/null | head -1)
+  if [ -z "$sr" ]; then
+    case "$(basename "$(dirname "$conf")")" in conf) sr=$(dirname "$(dirname "$conf")") ;; *) sr=$(dirname "$conf") ;; esac
+  fi
+  while [ ${#queue[@]} -gt 0 ] && [ $n -lt 300 ]; do
+    f=${queue[0]}; queue=("${queue[@]:1}")
+    case "$seen" in *" $f "*) continue ;; esac
+    seen="$seen$f "
+    if [ -d "$root$f" ]; then
+      for g in "$root$f"/*; do [ -f "$g" ] && queue+=("${g#"$root"}"); done
+      continue
+    fi
+    [ -f "$root$f" ] && [ -r "$root$f" ] || continue
+    n=$((n + 1)); printf '%s\n' "$root$f"
+    while IFS= read -r inc; do
+      case "$inc" in /*) ;; *) inc="$sr/$inc" ;; esac
+      for g in $root$inc; do { [ -e "$g" ] || [ -L "$g" ]; } && queue+=("${g#"$root"}"); done
+    done < <(sed -nE 's/^[[:space:]]*Include(Optional)?[[:space:]]+"?([^"[:space:]]+)"?.*/\2/Ip' "$root$f")
+  done
+}
+# 설정 파일 목록(stdin) -> 지시어 사용 여부. 설정 값은 출력하지 않는다
+ap_conf_flags() {
+  while IFS= read -r f; do cat "$f" 2>/dev/null; echo; done | sed -e 's/#.*//' | awk '
+    BEGIN { IGNORECASE = 1 }
+    tolower($1) == "protocols" { for (i = 2; i <= NF; i++) if (tolower($i) == "h2" || tolower($i) == "h2c") h2 = 1 }
+    tolower($1) ~ /^(mdomain|mdomainset|manageddomain|<mdomainset|<manageddomain)$/ { md = 1 }
+    tolower($1) ~ /^(virtualdocumentroot|virtualdocumentrootip|virtualscriptalias|virtualscriptaliasip)$/ { vda = 1 }
+    END { printf "h2=%d md_conf=%d vhost_alias_conf=%d", h2, md, vda }'
+}
+# 컨테이너 루트($1)에서 패키지 이름 정규식($2)에 맞는 첫 패키지 버전 (dpkg, apk)
+ctr_pkg() {
+  local v
+  v=$(awk -v re="$2" '/^Package: /{p=$2} /^Version: /{ if (p ~ re) { print $2; exit } }' "$1/var/lib/dpkg/status" 2>/dev/null)
+  [ -n "$v" ] && { printf 'dpkg:%s' "$v"; return; }
+  v=$(awk -F: -v re="$2" '/^P:/{p=$2} /^V:/{ if (p ~ re) { print $2; exit } }' "$1/lib/apk/db/installed" 2>/dev/null)
+  [ -n "$v" ] && printf 'apk:%s' "$v"
+}
+proc_loc() {   # $1 /proc/<pid> -> host 또는 <런타임>:<컨테이너 ID 12자리>
+  local cid rt
+  cid=$(grep -oE '[0-9a-f]{64}' "$1/cgroup" 2>/dev/null | head -1 | cut -c1-12)
+  rt=$(grep -oE 'kubepods|docker|containerd|crio|libpod' "$1/cgroup" 2>/dev/null | head -1)
+  if [ -n "$cid" ]; then printf '%s:%s' "${rt:-container}" "$cid"; else printf host; fi
+}
+
 # ---- META
 . /etc/os-release 2>/dev/null
-o META collector "scan_linux.sh 2026.11.2"
+o META collector "scan_linux.sh 2026.11.3"
 o META host "$(hostname)"
 o META os "${PRETTY_NAME:-unknown}"
 o META os_id "${ID:-unknown}-${VERSION_ID:-}"
@@ -100,11 +172,11 @@ o META avx512vbmi "$(grep -qw avx512vbmi /proc/cpuinfo && echo yes || echo no)"
 # SCTP 커널 모듈 상태 (참고 정보): 로드 여부, 커널 내장 여부, modprobe 차단 설정 여부
 o META sctp "loaded=$(grep -qw '^sctp' /proc/modules 2>/dev/null && echo 1 || echo 0) builtin=$(grep -qs '/sctp\.ko' "/lib/modules/$(uname -r)/modules.builtin" && echo 1 || echo 0) blocked=$(grep -rqsE '^[[:space:]]*(install[[:space:]]+sctp[[:space:]]+/(usr/)?bin/(false|true)|blacklist[[:space:]]+sctp)([[:space:]]|$)' /etc/modprobe.d /lib/modprobe.d /usr/lib/modprobe.d /run/modprobe.d && echo 1 || echo 0)"
 
-# ---- PKG: 패키지 관리자로 설치된 Java, MySQL, Oracle 계열, nginx 계열
+# ---- PKG: 패키지 관리자로 설치된 Java, MySQL, Oracle 계열, nginx 계열, PostgreSQL, Apache httpd, Node.js
 {
   command -v rpm >/dev/null 2>&1 && rpm -qa --qf '%{NAME}\t%{VERSION}-%{RELEASE}\n'
   command -v dpkg-query >/dev/null 2>&1 && dpkg-query -W -f='${Package}\t${Version}\t${db:Status-Status}\n' | awk -F'\t' '$3 == "installed" {print $1 "\t" $2}'
-} 2>/dev/null | awk -F'\t' '{ n = tolower($1) } n ~ /(jdk|jre|java|corretto|temurin|zulu|graalvm|mysql|mariadb|percona|oracle|virtualbox|helidon|nginx|openresty|tengine|angie)/ && n !~ /javascript|javapackages|ca-certificates-java|java-common|^tzdata|certbot/ { print "PKG\t" $1 "\t" $2 }' | capk 60
+} 2>/dev/null | awk -F'\t' '{ n = tolower($1) } n ~ /(jdk|jre|java|corretto|temurin|zulu|graalvm|mysql|mariadb|percona|oracle|virtualbox|helidon|nginx|openresty|tengine|angie|postgres|libpq|httpd|apache2|mod_http2|mod_md|nodejs)/ && n !~ /javascript|javapackages|ca-certificates-java|java-common|^tzdata|certbot/ { print "PKG\t" $1 "\t" $2 }' | capk 60
 
 # ---- PROC: 실행 중인 JVM(libjvm.so를 올린 모든 프로세스, jsvc 포함)과 MySQL/Oracle DB 프로세스
 for d in /proc/[0-9]*; do
@@ -159,6 +231,58 @@ for d in /proc/[0-9]*; do
   o NGXCONF "$loc" "$p" "$conf" "files=$(printf '%s' "$files" | grep -c .)" "$(printf '%s\n' "$files" | grep . | ngx_conf_flags)"
 done | capk 30
 
+# ---- SW 실행 중: PostgreSQL, Apache httpd의 부모(master) 프로세스, Node.js 프로세스가 쓰는 mongodb 패키지
+for d in /proc/[0-9]*; do
+  comm=$(cat "$d/comm" 2>/dev/null) || continue
+  case "$comm" in postgres|postmaster|httpd|apache2|node|nodejs) ;; *) continue ;; esac
+  p=${d#/proc/}
+  ppid=$(awk '{print $4}' "$d/stat" 2>/dev/null)
+  pcomm=$(cat "/proc/$ppid/comm" 2>/dev/null)
+  loc=$(proc_loc "$d")
+  exe=$(readlink "$d/exe" 2>/dev/null)
+  stale=""; case "$exe" in *" (deleted)") stale="EXE_DELETED(교체 후 미재기동 가능성)" ;; esac
+  exe=${exe% (deleted)}
+  root="$d/root"; [ "$loc" = host ] && root=""   # 호스트 프로세스는 / 기준으로 읽는다(다른 사용자 프로세스의 root 링크는 권한에 따라 막힘)
+  bin="$d/exe"
+  if [ -z "$exe" ]; then   # exe 링크를 못 읽으면(권한) 명령행 첫 인자의 절대 경로로 대신한다
+    exe=$(tr '\0' '\n' < "$d/cmdline" 2>/dev/null | head -1)
+    case "$exe" in /*) bin="$root$exe" ;; *) exe=""; bin="" ;; esac
+  fi
+  case "$comm" in
+    postgres|postmaster)
+      case "$pcomm" in postgres|postmaster) continue ;; esac   # 하위 프로세스(backend, checkpointer 등)는 건너뜀
+      pkgv=""; [ "$loc" != host ] && pkgv=$(ctr_pkg "$root" '^postgresql(-[0-9]+|[0-9]+)(-server)?$')
+      o SW postgresql "$loc" "$exe" "$(sw_ver postgresql "$bin")" "pid $p" "$stale" "$pkgv" "$(pg_flags "$root" "$exe")" ;;
+    httpd|apache2)
+      [ "$pcomm" = "$comm" ] && continue
+      conf=$(tr '\0' '\n' < "$d/cmdline" 2>/dev/null | awk 'p {print; exit} $0 == "-f" {p=1}')
+      if [ -z "$conf" ]; then
+        for c in /etc/httpd/conf/httpd.conf /etc/apache2/apache2.conf /usr/local/apache2/conf/httpd.conf /etc/apache2/httpd.conf; do
+          [ -f "$root$c" ] && { conf=$c; break; }
+        done
+      fi
+      mods=$(grep -oE '/mod_[a-z0-9_]+\.so' "$d/maps" 2>/dev/null | sed -E 's#^/mod_##; s#\.so$##' | sort -u | paste -sd, -)
+      files=""; [ -n "$conf" ] && files=$(ap_conf_files "$root" "$conf")
+      flags="mods=${mods:-none} files=$(printf '%s' "$files" | grep -c .) $(printf '%s\n' "$files" | grep . | ap_conf_flags)"
+      pkgv=""; [ "$loc" != host ] && pkgv=$(ctr_pkg "$root" '^(apache2-bin|apache2|httpd)$')
+      o SW httpd "$loc" "$exe" "$(sw_ver httpd "$bin")" "pid $p" "$stale" "$pkgv" "$flags" ;;
+    node|nodejs)
+      cwd=$(readlink "$d/cwd" 2>/dev/null)
+      script=$(tr '\0' '\n' < "$d/cmdline" 2>/dev/null | awk 'NR > 1 && $0 !~ /^-/ {print; exit}')
+      case "$script" in /*) ;; ?*) script="$cwd/$script" ;; esac
+      for start in "$cwd" "$(dirname "${script:-/}")"; do
+        dir=$start
+        for _ in 1 2 3 4 5 6; do
+          pj="$dir/node_modules/mongodb/package.json"
+          v=$(sw_ver npm-mongodb "$root$pj")
+          [ -n "$v" ] && { o SW npm-mongodb "$loc" "$pj" "$v" "pid $p" "" "" ""; break; }
+          [ "$dir" = / ] && break
+          dir=$(dirname "$dir")
+        done
+      done ;;
+  esac
+done | capk 40
+
 # ---- ORACLE: oraInventory와 oratab에 등록된 Oracle Home (DB, WebLogic/FMW), 적용 패치 목록
 INV=$(awk -F= '/^inventory_loc/ {print $2}' /etc/oraInst.loc 2>/dev/null)
 HOMES=$( { [ -n "$INV" ] && grep -oE 'LOC="[^"]+"' "$INV/ContentsXML/inventory.xml" 2>/dev/null | cut -d'"' -f2; awk -F: '!/^#/ && NF >= 2 && $2 != "" {print $2}' /etc/oratab 2>/dev/null; } | sort -u)
@@ -184,7 +308,7 @@ if command -v docker >/dev/null 2>&1; then
   timeout 20 docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' 2>/dev/null | sed 's/^/DOCKER\tps\t/' | capk 30
 fi
 
-# ---- FIND: 로컬 디스크 전체(tarball 설치 JDK, 앱 번들 JDK, 컨테이너 이미지 레이어 포함)
+# ---- FIND: 로컬 디스크 전체(tarball 설치 JDK, 앱 번들 JDK, 컨테이너 이미지 레이어 포함). SW는 위 실행 중 항목과 판정기가 경로로 합친다
 MNTS=$(findmnt -rn -o TARGET,FSTYPE 2>/dev/null | awk '$2 ~ /^(ext2|ext3|ext4|xfs|btrfs|zfs)$/ {print $1}' | sort -u)
 [ -n "$MNTS" ] || MNTS=/
 FOUND=$(for m in $MNTS; do
@@ -192,7 +316,10 @@ FOUND=$(for m in $MNTS; do
   timeout 900 find "$m" -xdev \( -path /proc -o -path /sys -o -path /dev -o -path /run -o -path /snap \) -prune -o -type f \
     \( -path '*/bin/java' -o -path '*/bin/mysqld' -o -path '*/sbin/mysqld' -o -path '*/bin/mariadbd' -o -path '*/sbin/mariadbd' -o -path '*/bin/mysql' -o -path '*/bin/mysqlsh' \
        -o -name weblogic.jar -o -name 'helidon-*.jar' -o -name ords.war -o -name VBoxManage \
-       -o -path '*/sbin/nginx' -o -path '*/bin/nginx' -o -path '*/bin/openresty' -o -path '*/sbin/angie' \) -print 2>/dev/null
+       -o -path '*/sbin/nginx' -o -path '*/bin/nginx' -o -path '*/bin/openresty' -o -path '*/sbin/angie' \
+       -o -path '*/bin/postgres' -o -path '*/libexec/postgresql*/postgres' -o -path '*/bin/pg_dump' -o -path '*/bin/psql' \
+       -o -path '*/sbin/httpd' -o -path '*/bin/httpd' -o -path '*/sbin/apache2' -o -path '*/bin/apache2' \
+       -o -path '*/node_modules/mongodb/package.json' \) -print 2>/dev/null
 done | sort -u)
 printf '%s\n' "$FOUND" | while IFS= read -r f; do
   [ -n "$f" ] || continue
@@ -209,8 +336,16 @@ printf '%s\n' "$FOUND" | while IFS= read -r f; do
     nginx|openresty|angie)
       bn=$(ngx_banner "$f")
       [ -n "$bn" ] && o NGINX "$loc" "$sp" "$bn" "$(ngx_mods "$f")" "" "" "" ;;   # 버전 문자열이 없으면 nginx가 아닌 파일
+    postgres)
+      v=$(sw_ver postgresql "$f"); [ -n "$v" ] && o SW postgresql "$loc" "$sp" "$v" "" "" "" "$(pg_flags "" "$f")" ;;
+    pg_dump|psql)
+      v=$(sw_ver postgresql-client "$f"); [ -n "$v" ] && o SW postgresql-client "$loc" "$sp" "$v" "" "" "" "" ;;
+    httpd|apache2)
+      v=$(sw_ver httpd "$f"); [ -n "$v" ] && o SW httpd "$loc" "$sp" "$v" "" "" "" "" ;;   # 버전 문자열이 없으면 Apache가 아닌 파일
+    package.json)
+      v=$(sw_ver npm-mongodb "$f"); [ -n "$v" ] && o SW npm-mongodb "$loc" "$sp" "$v" "" "" "" "" ;;
     *) o FILE "$loc" "$sp" ;;
   esac
-done | capk 50
+done | capk 80
 
 o END "$(( $(date +%s) - T0 ))s"
