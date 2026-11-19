@@ -1,32 +1,23 @@
 # 공지 후보 수집(intake) 설정. `_core/sweep intake`가 읽는다.
 # 공개 공지만 다룬다. 고객 정보(고객명, 서버, 계정)를 넣지 않는다.
 #
-# 흐름: 선별 소스(KISA 보안공지, CISA KEV, Oracle 보안 공지 RSS)에서 최근 공지를 읽고
-#       감시 목록(watch)에 든 제품만 남긴 뒤, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(dismissed)를 뺀다.
+# 흐름: KISA 보호나라 보안공지(보안 업데이트 권고)에서 최근 공지를 읽고
+#       감시 목록(watch)에 든 벤더만 남긴 뒤, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(dismissed)를 뺀다.
+#       KISA가 국내 기준으로 주요 벤더 업데이트를 골라 주므로 소스는 이것 하나만 쓴다(Oracle CPU/CSPU도 KISA에 올라옴).
 #       남은 것이 후보다. 후보는 에이전트가 원문(벤더 공식 공지)을 읽고 AGENTS.md 작업 A로 등록한다.
 
 # 요청에 붙이는 User-Agent. 수집기임을 그대로 밝힌다(브라우저 흉내를 내지 않는다).
 user_agent = "nxt-vuln-sweep-intake/1.0 (+https://github.com/nxtcloud-org/nxt-vuln-sweep)"
 days = 14   # 기본 조회 기간(일)
 
-# ---------------- 선별 소스
+# ---------------- 소스
 [sources.kisa]
 label = "KISA 보호나라 보안공지"
 url = "https://www.boho.or.kr/kr/rss.do?bbsId=B0000133"
 title_must = ["보안 업데이트 권고"]   # 이 문구가 든 공지만 본다(일반 권고문 제외). 상세 페이지에서 CVE와 참고 링크를 읽는다
 
-[sources.kev]
-label = "CISA KEV (실제 악용 확인)"
-url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-
-[sources.oracle]
-label = "Oracle 보안 공지 RSS"
-url = "https://www.oracle.com/ocom/groups/public/@otn/documents/webcontent/rss-otn-sec.xml"
-title_any = ["Critical Patch Update", "Critical Security Patch Update", "Security Alert"]
-watch = "Oracle"   # Oracle 공지는 감시 목록 대조 없이 이 항목으로 본다
-
 # ---------------- 감시 목록 (고객 서버 스택)
-# match: 소문자 부분 일치. KISA는 제목의 벤더명, KEV는 vendorProject와 product를 대조한다. exclude가 들어 있으면 제외
+# match: 소문자 부분 일치로 KISA 공지 제목의 벤더명(예: "NGINX 제품 보안 업데이트 권고"의 NGINX)을 대조한다. exclude가 들어 있으면 제외
 # collector: 현재 수집기와 판정기가 다루는 criteria 섹션. 비어 있으면 등록 전에 수집기 확장이 필요하다
 # 네트워크 장비, 스토리지, 데스크톱 제품(Citrix, Fortinet, Synology 등)은 서버 내부 점검으로 판정할 수 없어 넣지 않는다
 
@@ -107,16 +98,10 @@ match = ["spring"]
 collector = []
 
 # ---------------- 검토 후 제외
-# 등록하지 않기로 한 공지. key(소스:식별자) 또는 cve로 지정하고, 사유와 근거(공식 출처)를 남긴다
-
-[[dismissed]]
-cve = "CVE-2026-123158"
-date = "2026-11-19"
-reason = "OpenSSH: musl libc로 빌드하고 PAM을 쓰지 않는 Linux(주로 Alpine)만 해당. Amazon Linux 2/2023, RHEL, Ubuntu는 배포판 공식 판정 Not affected"
-sources = [
-  "https://www.openssh.org/releasenotes.html (10.6p2)",
-  "https://explore.alas.aws.amazon.com/CVE-2026-123158.html",
-  "https://access.redhat.com/hydra/rest/securitydata/cve/CVE-2026-123158.json",
-  "https://ubuntu.com/security/CVE-2026-123158",
-  "https://alpinelinux.org/posts/2026-11-05-openssh-password-authentication-bypass/",
-]
+# 등록하지 않기로 한 공지. key(kisa:<nttId>) 또는 cve로 지정하고, 날짜, 사유, 근거(공식 출처 URL 목록 sources)를 남긴다
+# 예)
+# [[dismissed]]
+# key = "kisa:72309"
+# date = "2026-11-20"
+# reason = "MongoDB Atlas(관리형)만 해당, 설치형 제품은 영향 없음"
+# sources = ["https://..."]

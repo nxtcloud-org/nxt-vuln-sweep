@@ -91,18 +91,19 @@
 
 사용자 요청 예: "새 공지 후보 확인해줘", "intake Issue 처리해줘"
 
-- `_core/sweep intake`가 선별 소스에서 최근 공지(기본 14일)를 읽어 후보를 찾습니다. 설정은 `_core/intake.toml`입니다.
-  - 선별 소스: KISA 보호나라 보안공지(보안 업데이트 권고), CISA KEV(실제 악용 확인), Oracle 보안 공지 RSS
-  - 감시 목록(`[[watch]]`)에 든 제품만 남기고, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(`[[dismissed]]`)를 뺍니다.
+- `_core/sweep intake`가 KISA 보호나라 보안공지(보안 업데이트 권고)에서 최근 공지(기본 14일)를 읽어 후보를 찾습니다. 설정은 `_core/intake.toml`입니다.
+  - 소스는 KISA 하나입니다. 국내 기준으로 주요 벤더 업데이트만 올라오고, Oracle CPU/CSPU도 포함됩니다.
+  - 감시 목록(`[[watch]]`)에 든 벤더만 남기고, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(`[[dismissed]]`)를 뺍니다.
+  - KISA 상세 페이지의 CVE 목록과 참고사이트 링크(벤더 원문, NVD)를 Issue에 넣습니다.
 - GitHub Actions(`.github/workflows/intake.yml`)가 매일 `--days 7 --issues`로 돌며 새 후보마다 `[intake]` Issue를 만듭니다. main에 있어야 동작합니다.
-  - 같은 키(`kisa:<번호>`, `kev:<CVE>`, `oracle:<공지키>`)의 Issue가 이미 있으면(닫힌 것 포함) 다시 만들지 않습니다.
-  - 러너에서 소스 하나가 막히면 경고만 남기고 나머지를 처리합니다. 그때는 로컬에서 `_core/sweep intake --issues`로 보완합니다.
+  - 같은 키(`kisa:<nttId>`)의 Issue가 이미 있으면(닫힌 것 포함) 다시 만들지 않습니다.
+  - 러너에서 KISA 접속이 막히면 작업이 실패로 끝납니다. 그때는 로컬에서 `_core/sweep intake --issues`로 대신 돌립니다.
 - 후보 처리
-  1. 벤더 공식 원문을 찾아 읽습니다. KISA, CISA 요약은 후보 선별용이고 기준표 근거가 아닙니다.
+  1. 벤더 공식 원문(Issue의 참고 링크)을 읽습니다. KISA 요약은 후보 선별용이고 기준표 근거가 아닙니다.
   2. 고객 서버 스택에 해당하고 수집기가 다루는 제품이면(Issue의 수집기 지원 항목) 작업 A로 등록합니다. PR 본문에 Issue를 연결합니다.
   3. 수집기가 다루지 않는 제품이면 사용자에게 수집기 확장 여부를 묻습니다.
   4. 등록하지 않기로 하면 `[[dismissed]]`에 사유, 날짜, 근거 URL을 적어 `core/` 브랜치로 올리고 Issue를 닫습니다.
-     - 예: 배포판 공식 판정이 Not affected인 경우(CVE-2026-123158, OpenSSH, musl libc와 PAM 미사용 빌드만 해당)
+     - 예: 관리형 서비스만 해당하거나, 배포판 공식 판정이 Not affected인 경우
 - 감시 목록을 바꿀 때는 `core/` 브랜치에서 `_core/intake.toml`을 고칩니다. 서버 내부 점검으로 판정할 수 없는 장비, 데스크톱 제품은 넣지 않습니다.
 - Issue에는 공개 공지 내용만 씁니다. 고객 환경에 해당하는지 같은 내용은 쓰지 않습니다.
 - `--issues`는 공개 리포에 Issue를 만듭니다. 로컬에서 처음 쓸 때는 `--dry-run`으로 먼저 봅니다.

@@ -1,4 +1,4 @@
-# 공지 후보 수집: 매일 선별 소스(KISA 보안공지, CISA KEV, Oracle RSS)를 읽어 새 후보를 Issue로 만든다.
+# 공지 후보 수집: 매일 KISA 보호나라 보안공지(보안 업데이트 권고)를 읽어 새 후보를 Issue로 만든다.
 # 실행 내용은 _core/sweep intake, 설정은 _core/intake.toml. 공개 공지만 다룬다.
 name: intake
 

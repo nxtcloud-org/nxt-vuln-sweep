@@ -1,8 +1,9 @@
-"""공지 후보 수집: 선별 소스에서 최근 공지를 읽어 감시 목록에 든 것 중 아직 등록하지 않은 것을 찾는다.
+"""공지 후보 수집: KISA 보호나라 보안공지에서 최근 공지를 읽어 감시 목록에 든 것 중 아직 등록하지 않은 것을 찾는다.
 
 사용법: _core/sweep intake [--days N] [--json 파일] [--issues [--dry-run]]
   (직접: cd _core && python3 -m vsweep.intake ...)
 설정: _core/intake.toml (소스, 감시 목록, 검토 후 제외)
+소스는 KISA 보안공지(보안 업데이트 권고)만 쓴다. 다른 소스를 붙이려면 src_<이름> 함수와 [sources.<이름>]을 함께 추가한다.
 출력: 표준 출력에 마크다운 요약. --json 은 전체 항목, --issues 는 새 후보마다 GitHub Issue 생성(gh CLI)
 
 공개 공지만 읽고 공개 리포의 Issue에 쓴다. 고객 환경 정보는 다루지 않는다.
@@ -16,7 +17,6 @@ import json
 import os
 import re
 import subprocess
-import sys
 import tomllib
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -82,38 +82,7 @@ def src_kisa(cfg, ua, since, watches):
     return out
 
 
-def src_kev(cfg, ua, since, watches):
-    data = json.loads(fetch(cfg["url"], ua))
-    out = []
-    for v in data.get("vulnerabilities", []):
-        d = parse_date(v.get("dateAdded"))
-        if not d or d < since:
-            continue
-        vp = f"{v.get('vendorProject', '')} {v.get('product', '')}"
-        refs = [u.rstrip(" ;") for u in re.findall(r"https?://[^\s;]+", v.get("notes", "")) if "cisa.gov" not in u]
-        out.append({"key": f"kev:{v['cveID']}", "source": cfg.get("label", "KEV"), "date": str(d),
-                    "title": v.get("vulnerabilityName", vp), "url": f"https://nvd.nist.gov/vuln/detail/{v['cveID']}", "vendor": vp,
-                    "cves": [v["cveID"]], "refs": refs,
-                    "note": f"{v.get('shortDescription', '')} (KEV 조치 기한 {v.get('dueDate', '')}, 랜섬웨어 사용 {v.get('knownRansomwareCampaignUse', '')})",
-                    "watch": watch_of(vp, watches)})
-    return out
-
-
-def src_oracle(cfg, ua, since, watches):
-    root = ET.fromstring(fetch(cfg["url"], ua).encode())
-    w = next((x for x in watches if x["name"] == cfg.get("watch")), None)
-    out = []
-    for it in root.iter("item"):
-        title, link, d = text_of(it, "title"), text_of(it, "link"), parse_date(text_of(it, "pubDate"))
-        if not d or d < since or not any(k in title for k in cfg.get("title_any", [])):
-            continue
-        slug = os.path.splitext(os.path.basename(link.rstrip("/")))[0] or link
-        out.append({"key": f"oracle:{slug}", "source": cfg.get("label", "Oracle"), "date": str(d), "title": title, "url": link,
-                    "vendor": "Oracle", "cves": [], "refs": [link], "note": "", "watch": w})
-    return out
-
-
-SOURCES = {"kisa": src_kisa, "kev": src_kev, "oracle": src_oracle}
+SOURCES = {"kisa": src_kisa}
 
 
 # ---------------- 등록 여부
@@ -172,7 +141,7 @@ def issue_body(item):
         lines.append("- 참고 링크")
         lines += [f"  - {u}" for u in item["refs"][:15]]
     lines += ["", "검토 방법",
-              "- 벤더 공식 원문을 찾아 읽고, 고객 서버 스택에 해당하는지 판단합니다. KISA, CISA 요약은 판정 근거로 쓰지 않습니다.",
+              "- 벤더 공식 원문(참고 링크)을 찾아 읽고, 고객 서버 스택에 해당하는지 판단합니다. KISA 요약은 판정 근거로 쓰지 않습니다.",
               "- 등록하면: 에이전트에게 `이 공지 등록해줘 <벤더 원문 URL>` (AGENTS.md 작업 A). PR 본문에 이 Issue를 연결합니다.",
               "- 등록하지 않으면: `_core/intake.toml` `[[dismissed]]`에 사유와 근거를 적고 Issue를 닫습니다.",
               "", "_core/sweep intake 가 자동으로 만든 Issue입니다."]

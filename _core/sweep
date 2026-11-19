@@ -21,7 +21,7 @@ usage() {
   new <취약점ID>                          템플릿으로 루트에 취약점 폴더 생성
   index                                   INDEX.md, CVE_INDEX.csv 갱신과 폴더 형식 검사
   intake [--days N] [--json 파일] [--issues [--dry-run]]
-                                          선별 소스(KISA 보안공지, CISA KEV, Oracle RSS)에서 등록 후보 찾기 (_core/intake.toml)
+                                          KISA 보안공지에서 등록 후보 찾기 (_core/intake.toml)
 
 고객 점검 (리포 밖 $RUNS, 커밋하지 않음)
   init <고객>                             고객 설정 파일 생성 (<SWEEP_RUNS>/<고객>/config.env)
