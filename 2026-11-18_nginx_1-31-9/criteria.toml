@@ -49,11 +49,17 @@ plus_note = "NGINX Plus: F5 공지(K000163925-K000163935)의 Plus 버전표로 �
 "ingress-nginx" = "Kubernetes ingress-nginx 컨트롤러: 프로젝트가 2026-03-24 보관(archived)되어 보안 수정이 나오지 않음"
 "f5-nginx-ingress" = "F5 NGINX Ingress Controller: F5 공지로 확인"
 
-# 배포판 수정 버전 (2026-11-19 확인). Ubuntu, Debian 안정판, Amazon Linux 2(nginx1), RHEL은 아직 수정 버전 없음
+# 배포판 수정 버전 (2026-11-19 확인). Ubuntu, Debian 안정판은 아직 수정 버전 없음, RHEL은 미확인
 [nginx.distro_fixed."amzn-2023"]
 version = "1.30.7-1.amzn2023.0.1"
 kind = "rpm"
 source = "ALAS2023-2026-3494 (2026-11-18)"
+
+# Amazon Linux 2는 amazon-linux-extras nginx1 토픽 패키지
+[nginx.distro_fixed."amzn-2"]
+version = "1.30.7-1.amzn2.0.1"
+kind = "rpm"
+source = "ALAS2NGINX1-2026-018 (2026-11-19)"
 
 # ---------------- 보고서 판정 기준 시트용
 [[products]]
