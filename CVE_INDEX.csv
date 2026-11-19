@@ -105,4 +105,5 @@ CVE-2026-123633,2026-11-18_nginx_1-31-9,nginx,ngx_http_v2_module,8.1,Y,,"1.19.7-
 CVE-2026-123634,2026-11-18_nginx_1-31-9,nginx,resolver,8.1,Y,,"0.6.18-1.31.8 (수정 1.31.9, 1.30.7)"
 CVE-2026-123640,2026-11-18_nginx_1-31-9,nginx,ngx_stream_ssl_preread_module,5.3,Y,,"1.15.2-1.31.8 (수정 1.31.9, 1.30.7)"
 CVE-2026-125283,2026-11-18_nginx_1-31-9,nginx,try_files (정규식 map),5.3,Y,,"0.9.6-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-126837,CVE-2026-126837,MongoDB Node.js Driver,DNS SRV host discovery,9.1,Y,,">= 3.3.3, < 7.8.0 (수정 7.8.0)"
 CVE-2026-127428,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: GIS,7.1,N,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
