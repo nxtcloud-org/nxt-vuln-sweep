@@ -76,8 +76,9 @@
      - 점검 절차, 단계별 추가 확인, 판정 검토 포인트, 보고 문안 가이드, 기준표 갱신 방법(원문 읽는 법), 하지 말 것
      - 같은 벤더의 이전 폴더 AGENTS.md를 출발점으로 쓰면 원문 추출 방법 같은 내용을 다시 쓰지 않아도 됩니다.
 5. 수집기가 대상 제품을 잡는지 확인합니다.
-   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage)
-   - 그 밖의 제품(OpenSSL, Log4j, nginx 등)은 수집기와 판정기를 확장해야 합니다. 절차는 `_core/COLLECTORS.md` 끝부분에 있습니다.
+   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage), nginx 계열(nginx, OpenResty, Angie, NGINX Plus 바이너리와 설정의 지시어 사용 여부, 컨테이너 포함)
+   - 그 밖의 제품(OpenSSL, Log4j 등)은 수집기와 판정기를 확장해야 합니다. 절차는 `_core/COLLECTORS.md` 끝부분에 있습니다.
+   - criteria.toml에 제품 섹션이 없는 제품은 판정하지 않고 보고서에도 넣지 않습니다. 이번 공지와 무관한 섹션은 지웁니다.
    - 판정기는 `_core/vsweep/products.py`에 함수를 만들고, `_core/vsweep/judge.py`에서 레코드 종류별로 호출합니다.
    - 수집기나 판정기를 고쳐야 하면 `core/<설명>` 브랜치로 따로 올리고, 취약점 브랜치는 그 위에서 작업합니다.
 6. `_core/sweep index`를 실행하고 경고가 없는지 봅니다.
@@ -177,8 +178,8 @@ _core/sweep export $C $V
 | 우선순위 | 조건 |
 |---|---|
 | P1 | 공지 대상 제품(criteria `primary_vendors`, MySQL, Oracle Home)이 영향 버전 또는 EOL 버전으로 실행 중 |
-| P2 | 파생 빌드(Corretto, Temurin, OS 패키지 OpenJDK 등)가 영향 범위 버전 또는 EOL 버전으로 실행 중 |
-| P3 | 영향 버전 또는 EOL 버전이 설치만 되어 있음 (미실행, 컨테이너 이미지 레이어) |
+| P2 | 파생 빌드(Corretto, Temurin, OS 패키지 OpenJDK, 배포판 nginx 패키지 등)가 영향 범위 버전 또는 EOL 버전으로 실행 중 |
+| P3 | 영향 버전 또는 EOL 버전이 설치만 되어 있음 (미실행, 컨테이너 이미지 레이어). nginx는 실행 중이어도 수집한 설정에 공지의 사용 조건이 하나도 없으면 P3 |
 | 확인 필요 | 버전을 읽지 못했거나 사람이 대조해야 함. 스캔이 끝까지 안 된 서버 |
 | 해당 없음 | 공지 대상 아님(MariaDB, IBM Java 등) 또는 범위 밖 버전 |
 | 미점검 | 정지, 접속 수단 없음 |
@@ -203,6 +204,10 @@ _core/sweep export $C $V
 | LB 대상으로 등록됨 | 그 포트가 해당 Java 서비스인지는 별도 확인. 보고서에는 등록 사실만 씀 |
 | TOML 표 헤더 뒤에 쓴 루트 키 | 그 표 안으로 들어감. 루트 키는 맨 위에 |
 | EOL 버전 접두어 | 제품별로 둠(`[oracle_home.eol_prefixes]`). WebLogic 12.2.1.4는 지원 중이라 Client/DB의 `12.`와 섞지 않음 |
+| `nginx -t`, `nginx -T` | 로그 파일과 임시 디렉터리를 만들 수 있어 쓰지 않음. 버전과 configure 인자는 바이너리 문자열로 읽음 |
+| 배포판 nginx는 백포트해도 버전 문자열이 그대로(예: Ubuntu 1.18.0) | 패키지 버전을 배포판 공지의 수정 버전과 비교(`[nginx.distro_fixed]`). 공지가 없으면 P2로 두고 배포판 확인 |
+| nginx 실행 파일 `(deleted)` | 패키지 갱신 후 재기동하지 않음. 패키지 버전과 무관하게 이전 바이너리가 동작하므로 배포판 수정 버전 비교를 하지 않음 |
+| 컨테이너 안 절대 경로 심볼릭 링크 | `/proc/<pid>/root` 경유로 읽으면 호스트 기준으로 풀림. 수집기가 링크를 읽어 컨테이너 루트 기준으로 다시 붙임 |
 
 ## 커밋 전 검사
 
@@ -230,6 +235,10 @@ git diff --cached | grep -nE '\b[0-9]{12}\b|(^|[^0-9.])10\.[0-9]+\.[0-9]+\.[0-9]
 - 수집기를 바꾸면 `META collector` 버전 문자열을 올리고 시범 서버 1대로 출력 길이와 소요 시간을 확인합니다.
 - 판정 로직을 바꾸면 기존 RUN_DIR로 재판정해서 차이를 확인하고, 커밋 메시지에 판정이 달라지는 경우를 적습니다.
 - 러너를 고칠 때는 PATH 앞에 가짜 `aws` 스크립트를 둔 시험 환경(SWEEP_RUNS는 임시 폴더)에서 inventory, ssm, judge 흐름을 돌려 봅니다.
+- Linux 수집기는 로컬 Docker 컨테이너로 먼저 시험할 수 있습니다.
+  - 제품을 설치한 컨테이너 안에서 `bash /core/scan_linux.sh`를 실행합니다(리포 `_core`를 읽기 전용으로 마운트).
+  - 컨테이너 프로세스 탐지는 `docker run --pid=container:<대상>`으로 띄운 수집용 컨테이너에서 시험합니다.
+  - 컨테이너 루트는 overlay라 FIND 구간이 루트를 보지 않습니다. FIND를 시험할 때는 `MNTS=/`로 바꾼 사본을 씁니다.
 
 ## 구조
 
