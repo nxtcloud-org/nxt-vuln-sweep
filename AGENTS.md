@@ -87,6 +87,26 @@
    - push하고 PR을 엽니다. 제목은 `[set] <세트ID>: <공지 제목>` 또는 `[single] <CVE-ID>: <요약>`입니다.
    - PR 본문에도 고객명이나 고객 환경 규모(서버 수, 발견 건수)를 쓰지 않습니다. 검증은 "기존 점검 결과로 재판정해 동일함을 확인"처럼 씁니다.
 
+## 작업 C. 공지 후보 확인 (intake)
+
+사용자 요청 예: "새 공지 후보 확인해줘", "intake Issue 처리해줘"
+
+- `_core/sweep intake`가 선별 소스에서 최근 공지(기본 14일)를 읽어 후보를 찾습니다. 설정은 `_core/intake.toml`입니다.
+  - 선별 소스: KISA 보호나라 보안공지(보안 업데이트 권고), CISA KEV(실제 악용 확인), Oracle 보안 공지 RSS
+  - 감시 목록(`[[watch]]`)에 든 제품만 남기고, 이미 등록된 CVE(CVE_INDEX.csv)와 검토 후 제외(`[[dismissed]]`)를 뺍니다.
+- GitHub Actions(`.github/workflows/intake.yml`)가 매일 `--days 7 --issues`로 돌며 새 후보마다 `[intake]` Issue를 만듭니다. main에 있어야 동작합니다.
+  - 같은 키(`kisa:<번호>`, `kev:<CVE>`, `oracle:<공지키>`)의 Issue가 이미 있으면(닫힌 것 포함) 다시 만들지 않습니다.
+  - 러너에서 소스 하나가 막히면 경고만 남기고 나머지를 처리합니다. 그때는 로컬에서 `_core/sweep intake --issues`로 보완합니다.
+- 후보 처리
+  1. 벤더 공식 원문을 찾아 읽습니다. KISA, CISA 요약은 후보 선별용이고 기준표 근거가 아닙니다.
+  2. 고객 서버 스택에 해당하고 수집기가 다루는 제품이면(Issue의 수집기 지원 항목) 작업 A로 등록합니다. PR 본문에 Issue를 연결합니다.
+  3. 수집기가 다루지 않는 제품이면 사용자에게 수집기 확장 여부를 묻습니다.
+  4. 등록하지 않기로 하면 `[[dismissed]]`에 사유, 날짜, 근거 URL을 적어 `core/` 브랜치로 올리고 Issue를 닫습니다.
+     - 예: 배포판 공식 판정이 Not affected인 경우(CVE-2026-123158, OpenSSH, musl libc와 PAM 미사용 빌드만 해당)
+- 감시 목록을 바꿀 때는 `core/` 브랜치에서 `_core/intake.toml`을 고칩니다. 서버 내부 점검으로 판정할 수 없는 장비, 데스크톱 제품은 넣지 않습니다.
+- Issue에는 공개 공지 내용만 씁니다. 고객 환경에 해당하는지 같은 내용은 쓰지 않습니다.
+- `--issues`는 공개 리포에 Issue를 만듭니다. 로컬에서 처음 쓸 때는 `--dry-run`으로 먼저 봅니다.
+
 ## 작업 B. 고객 점검 (리포 밖, 커밋하지 않음)
 
 사용자 요청 예: "acme 고객에 2026-11-17_oracle_cspunov2026 점검 진행해줘"
@@ -190,7 +210,7 @@ _core/sweep export $C $V
 |---|---|
 | SSM API 출력은 인스턴스당 24,000자에서 잘림 | 수집기가 항목별 상한을 두고, 마지막 줄 END로 완주를 판단 |
 | AWS-RunShellScript가 sh로 실행될 수 있음 | run_ssm.sh가 base64 인자로 `bash -c` 실행 |
-| Oracle 원문이 WebFetch, curl에서 403 | 사용자 브라우저로 읽음. 표 추출 방법은 `2026-11-17_oracle_cspunov2026/README.md` |
+| Oracle 원문이 WebFetch에서 403 | curl 기본 요청으로는 받아짐(2026-11-19 확인). 둘 다 막히면 User-Agent 위장 없이 사용자 브라우저로 읽음. 표 추출 방법은 `2026-11-17_oracle_cspunov2026/AGENTS.md` |
 | Chrome 확장 출력 필터가 `key=`, `auth` 들어간 문자열을 가림 | 추출 결과의 키 이름과 구분자를 바꿈 |
 | OPatch 11.x는 `lspatches` 미지원(error 14) | 수집기가 `lsinventory` 요약으로 대체 |
 | Windows Tomcat 서비스는 java.exe 없이 tomcatN.exe 안에서 JVM 실행 | 수집기가 jvm.dll 모듈과 procrun 레지스트리로 탐지 |
@@ -252,4 +272,6 @@ _core/sweep                     진입점
 _core/*.sh, *.ps1               수집기, 러너 (출력 형식은 _core/COLLECTORS.md)
 _core/vsweep/                   판정, 보고서, 색인 (Python)
 _core/templates/                새 취약점 폴더와 고객 설정, 보고 문안 템플릿
+_core/intake.toml               공지 후보 수집 설정 (선별 소스, 감시 목록, 검토 후 제외)
+.github/workflows/intake.yml    매일 공지 후보 수집, 새 후보 Issue 생성
 ```
