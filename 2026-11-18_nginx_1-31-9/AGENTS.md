@@ -62,7 +62,7 @@ _core/sweep export $C $V
 - P2(배포판 패키지)는 보고서를 쓰기 직전에 배포판 공지를 다시 확인합니다.
   - Ubuntu: https://ubuntu.com/security/CVE-2026-123007 (릴리스별 상태, USN 번호, 수정 버전)
   - Debian: https://security-tracker.debian.org/tracker/CVE-2026-123007
-  - Amazon Linux: https://explore.alas.aws.amazon.com/CVE-2026-123007.html 에서 ALAS 번호를 찾고, ALAS 페이지에서 패키지 NVR을 읽습니다.
+  - Amazon Linux: https://explore.alas.aws.amazon.com/CVE-2026-123007.html 에서 ALAS 번호를 찾고, ALAS 페이지에서 패키지 NVR을 읽습니다. AL2023은 ALAS2023-2026-3494, AL2(nginx1)는 ALAS2NGINX1-2026-018로 반영했습니다.
   - Red Hat: https://access.redhat.com/security/cve/cve-2026-123007 (상태표는 WebFetch로 안 보이므로 Claude in Chrome)
   - 수정 버전이 나왔으면 criteria `[nginx.distro_fixed."<os_id>"]`에 넣고 `revision`을 확인 날짜로 바꾼 뒤 재판정합니다.
     - 키는 hosts/*.tsv의 META os_id 값입니다(예: `ubuntu-24.04`, `debian-12`, `amzn-2`, `rhel-9`). rhel 계열은 주 버전만 써도 됩니다.

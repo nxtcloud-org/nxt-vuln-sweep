@@ -46,7 +46,7 @@
 | 배포판 | 상태 | 근거 |
 |---|---|---|
 | Amazon Linux 2023 | 수정: nginx 1.30.7-1.amzn2023.0.1 (CVE 9건, 1.31 전용인 CVE-2026-120993 제외) | ALAS2023-2026-3494 |
-| Amazon Linux 2 (nginx1 extras) | Pending Fix | explore.alas.aws.amazon.com |
+| Amazon Linux 2 (nginx1 extras) | 수정: nginx 1.30.7-1.amzn2.0.1 (CVE 9건, CVE-2026-120993 제외) | ALAS2NGINX1-2026-018 (2026-11-19) |
 | Ubuntu (16.04-26.10) | Vulnerable, 수정 패키지 없음 | ubuntu.com/security/CVE-2026-123007 |
 | Debian bookworm, trixie | vulnerable (sid는 1.30.6-4에서 수정) | security-tracker.debian.org |
 | RHEL | 확인하지 못함(상태표가 브라우저에서만 보임) | access.redhat.com/security/cve/cve-2026-123007 |
