@@ -17,6 +17,7 @@ CVE-2026-91570,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Inte
 CVE-2026-91583,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-91585,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-92392,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: Packaging (curl),8.1,Y,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+CVE-2026-113425,2026-11-18_nginx_1-31-9,nginx,ngx_mail_proxy_module,8.1,Y,,"0.5.33-1.31.8 (수정 1.31.9, 1.30.7)"
 CVE-2026-114122,2026-11-17_oracle_cspunov2026,MySQL Workbench,Workbench (electron),3.9,N,,26.10.0
 CVE-2026-114819,2026-11-17_oracle_cspunov2026,Oracle Database Server,Oracle Text,9.9,N,,"19.3-19.32, 21.3-21.24, 23.4.0-23.26.3"
 CVE-2026-114822,2026-11-17_oracle_cspunov2026,Oracle Database Server,RDBMS,9.9,N,,23.4.0-23.26.4
@@ -40,4 +41,13 @@ CVE-2026-114952,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Clie
 CVE-2026-114953,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: Replication,6.5,N,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
 CVE-2026-115557,2026-11-17_oracle_cspunov2026,MySQL Shell,Shell: Core Client (Python),9.8,Y,,26.10.0
 CVE-2026-115557,2026-11-17_oracle_cspunov2026,Oracle Database Server,RDBMS (Python),7.4,Y,,"21.3-21.24, 23.4.0-23.26.3"
+CVE-2026-118899,2026-11-18_nginx_1-31-9,nginx,ngx_http_core_module (TLSv1.3),7.5,Y,,"1.13.0-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-120967,2026-11-18_nginx_1-31-9,nginx,ngx_stream_ssl_module,4.8,Y,,"1.25.5-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-120993,2026-11-18_nginx_1-31-9,nginx,ngx_stream_ssl_module,5.3,Y,,1.31.4-1.31.8 (수정 1.31.9)
+CVE-2026-121810,2026-11-18_nginx_1-31-9,nginx,ngx_http_v3_module,8.1,Y,,"1.25.0-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-123007,2026-11-18_nginx_1-31-9,nginx,ngx_http_v2_module (flow control),8.1,Y,,"1.9.5-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-123633,2026-11-18_nginx_1-31-9,nginx,ngx_http_v2_module,8.1,Y,,"1.19.7-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-123634,2026-11-18_nginx_1-31-9,nginx,resolver,8.1,Y,,"0.6.18-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-123640,2026-11-18_nginx_1-31-9,nginx,ngx_stream_ssl_preread_module,5.3,Y,,"1.15.2-1.31.8 (수정 1.31.9, 1.30.7)"
+CVE-2026-125283,2026-11-18_nginx_1-31-9,nginx,try_files (정규식 map),5.3,Y,,"0.9.6-1.31.8 (수정 1.31.9, 1.30.7)"
 CVE-2026-127428,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: GIS,7.1,N,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
