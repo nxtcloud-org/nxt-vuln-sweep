@@ -4,6 +4,7 @@
 
 | 폴더 | 종류 | 발표일 | 벤더 | 제목 | 제품 | CVE 수 |
 |---|---|---|---|---|---|---|
+| [CVE-2026-99362](CVE-2026-99362/README.md) | 단일 CVE | 2026-11-19 | linux | [nfsd: preflight SEQUENCE replies before accepting a slot](https://nvd.nist.gov/vuln/detail/CVE-2026-99362) | Linux 커널 (nfsd) | 1 |
 | [2026-11-18_nginx_1-31-9](2026-11-18_nginx_1-31-9/README.md) | 취약점 세트 | 2026-11-18 | nginx | [nginx-1.30.7 stable and nginx-1.31.9 mainline versions have been released](https://nginx.org/en/security_advisories.html) | nginx (open source), NGINX Plus | 10 |
 | [2026-11-17_oracle_cspunov2026](2026-11-17_oracle_cspunov2026/README.md) | 취약점 세트 | 2026-11-17 | oracle | [Oracle Critical Security Patch Update Advisory - November 2026](https://www.oracle.com/security-alerts/cspunov2026.html) | Oracle Java SE, Oracle GraalVM for JDK, Oracle JavaFX, MySQL Server, MySQL Cluster, Oracle Database Server, Oracle WebLogic Server | 42 |
 | [2026-11-12_postgresql_18-7](2026-11-12_postgresql_18-7/README.md) | 취약점 세트 | 2026-11-12 | postgresql | [PostgreSQL 18.7, 17.12, 16.16, 15.20, 14.25, and 19 RC 2 Released!](https://www.postgresql.org/about/news/postgresql-187-1712-1616-1520-1425-and-19-rc-2-released-3442/) | PostgreSQL 서버, PostgreSQL 클라이언트 도구 | 52 |

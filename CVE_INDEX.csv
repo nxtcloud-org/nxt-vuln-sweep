@@ -23,6 +23,7 @@ CVE-2026-91570,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Inte
 CVE-2026-91583,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-91585,2026-11-17_oracle_cspunov2026,Oracle WebLogic Server,TopLink Integration,9.8,Y,,"12.2.1.4.0, 14.1.1.0.0, 14.1.2.0.0, 15.1.1.0.0"
 CVE-2026-92392,2026-11-17_oracle_cspunov2026,"MySQL Server, MySQL Cluster",Server: Packaging (curl),8.1,Y,,"Server 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10; Cluster 8.0.0-8.0.50, 8.4.0-8.4.13, 9.7.0-9.7.4, 26.10"
+CVE-2026-99362,CVE-2026-99362,Linux 커널,nfsd (fs/nfsd/nfs4state.c),9.8,Y,server,"3.16 이상 (수정 5.10.275, 5.15.226, 6.1.193, 6.6.163, 6.12.117, 6.18.61, 7.3.2, 7.4-rc1)"
 CVE-2026-106023,2026-11-11_apache_httpd-2-4-71,Apache HTTP Server,mod_md,7.5,Y,,2.4.30-2.4.70 (수정 2.4.71)
 CVE-2026-109163,2026-11-11_apache_httpd-2-4-71,Apache HTTP Server,mod_vhost_alias,5.9,Y,,2.4.69-2.4.70 (수정 2.4.71)
 CVE-2026-113425,2026-11-18_nginx_1-31-9,nginx,ngx_mail_proxy_module,8.1,Y,,"0.5.33-1.31.8 (수정 1.31.9, 1.30.7)"
