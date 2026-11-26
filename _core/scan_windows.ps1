@@ -27,7 +27,7 @@ function NgxInfo($p) {
 
 # ---- META
 $os = Get-CimInstance Win32_OperatingSystem
-O 'META' 'collector' 'scan_windows.ps1 2026.11.3'
+O 'META' 'collector' 'scan_windows.ps1 2026.11.4'
 O 'META' 'host' $env:COMPUTERNAME
 O 'META' 'os' "$($os.Caption) $($os.Version)"
 O 'META' 'cpu' ((Get-CimInstance Win32_Processor | Select-Object -First 1).Name)

@@ -109,6 +109,8 @@ def services(f):
         n = len(f["running"].split("; "))
         return "nginx master" + (f" x{n}" if n > 1 else "") + (" [컨테이너]" if "컨테이너" in f["kind"] else "")
     if not f["kind"].startswith("Java"):   # SW 레코드(PostgreSQL, httpd, Node.js 앱 등)
+        if not f["running"].startswith("pid "):   # 프로세스가 아닌 것(커널)
+            return f"{f['vendor']} {f['running']}"
         n = len(f["running"].split("; "))
         return f"{f['vendor']} 프로세스" + (f" x{n}" if n > 1 else "") + (" [컨테이너]" if "컨테이너" in f["kind"] else "")
     parts = []

@@ -1,5 +1,6 @@
 #!/bin/bash
-# nxt-vuln-sweep 호스트 수집기 (Linux). 공지와 무관하게 Java, MySQL, Oracle 계열, nginx 계열, PostgreSQL, Apache httpd, Node.js mongodb 패키지의 설치/실행 정보를 모은다.
+# nxt-vuln-sweep 호스트 수집기 (Linux). 공지와 무관하게 Java, MySQL, Oracle 계열, nginx 계열, PostgreSQL, Apache httpd, Node.js mongodb 패키지의 설치/실행 정보와
+# 실행 중인 커널(패키지, NFS 서버 사용 여부)을 모은다.
 # 출력 형식은 _core/COLLECTORS.md 참고. 탐지 대상을 늘릴 때는 FIND 패턴과 README를 함께 고친다.
 # 읽기 전용: 패키지 목록, 파일, /proc 조회와 버전 출력(java -version 등)만 하고 아무것도 설치하거나 바꾸지 않는다.
 # nginx 바이너리는 실행하지 않고(nginx -t, -T는 로그 파일과 임시 디렉터리를 만들 수 있음) 내장 문자열만 읽는다.
@@ -162,7 +163,7 @@ proc_loc() {   # $1 /proc/<pid> -> host 또는 <런타임>:<컨테이너 ID 12�
 
 # ---- META
 . /etc/os-release 2>/dev/null
-o META collector "scan_linux.sh 2026.11.3"
+o META collector "scan_linux.sh 2026.11.4"
 o META host "$(hostname)"
 o META os "${PRETTY_NAME:-unknown}"
 o META os_id "${ID:-unknown}-${VERSION_ID:-}"
@@ -171,6 +172,35 @@ o META cpu "$(awk -F': ' '/model name/ {print $2; exit}' /proc/cpuinfo)"
 o META avx512vbmi "$(grep -qw avx512vbmi /proc/cpuinfo && echo yes || echo no)"
 # SCTP 커널 모듈 상태 (참고 정보): 로드 여부, 커널 내장 여부, modprobe 차단 설정 여부
 o META sctp "loaded=$(grep -qw '^sctp' /proc/modules 2>/dev/null && echo 1 || echo 0) builtin=$(grep -qs '/sctp\.ko' "/lib/modules/$(uname -r)/modules.builtin" && echo 1 || echo 0) blocked=$(grep -rqsE '^[[:space:]]*(install[[:space:]]+sctp[[:space:]]+/(usr/)?bin/(false|true)|blacklist[[:space:]]+sctp)([[:space:]]|$)' /etc/modprobe.d /lib/modprobe.d /usr/lib/modprobe.d /run/modprobe.d && echo 1 || echo 0)"
+
+# ---- SW 커널: 실행 중인 커널(uname -r)과 그 패키지, 같은 패키지의 설치된 버전, NFS 서버(nfsd) 사용 여부
+# 패키지 조회(rpm -qa, dpkg-query)와 /proc, /etc 읽기만 한다. /etc/exports는 공유 항목이 있는지만 보고 내용은 출력하지 않는다
+# 패키지 이름: rpm은 -core, -64k, -debug 접미어를 뗀 이름(kernel, kernel-rt, kernel-uek, kernel6.12),
+#              dpkg는 Source에서 -signed와 아키텍처 접미어를 뗀 이름(linux, linux-aws, linux-aws-5.15). 배포판 공지의 소스 패키지 이름과 같다
+kr=$(uname -r); krb=${kr%%+*}   # +64k, +debug 같은 접미어는 패키지 버전에 없다
+kpkg=""; kinst=""; kl=""
+command -v rpm >/dev/null 2>&1 && kl=$(rpm -qa --qf '%{NAME}\t%{VERSION}-%{RELEASE}.%{ARCH}\t%{VERSION}-%{RELEASE}\n' 'kernel*' 2>/dev/null |
+  awk -F'\t' '$1 ~ /^kernel[0-9.]*(-(rt|uek|64k|debug))*(-core)?$/ { n = $1; sub(/-core$/, "", n); sub(/(-64k)?(-debug)?$/, "", n); print n "\t" $2 "\t" $3 }')
+if [ -n "$kl" ]; then
+  kn=$(printf '%s\n' "$kl" | awk -F'\t' -v r="$krb" '$2 == r {print $1 "=" $3; exit}')
+  [ -n "$kn" ] && kpkg="rpm:$kn" && kinst=$(printf '%s\n' "$kl" | awk -F'\t' -v n="${kn%%=*}" '$1 == n {print $3}' | sort -uV | tail -10 | paste -sd, -)
+elif command -v dpkg-query >/dev/null 2>&1; then
+  kl=$(dpkg-query -W -f='${Package}\t${Version}\t${Source}\t${db:Status-Status}\n' 'linux-image-*' 2>/dev/null |
+    awk -F'\t' '$4 == "installed" && $1 ~ /^linux-image-(unsigned-)?[0-9]/ { s = $3; sub(/ .*/, "", s); if (s == "") s = $1; sub(/-signed/, "", s); sub(/-(amd64|arm64|i386|armhf|ppc64el|s390x)$/, "", s); print $1 "\t" $2 "\t" s }')
+  kn=$(printf '%s\n' "$kl" | awk -F'\t' -v a="linux-image-$kr" -v b="linux-image-unsigned-$kr" '$1 == a || $1 == b {print $3 "=" $2; exit}')
+  [ -n "$kn" ] && kpkg="dpkg:$kn" && kinst=$(printf '%s\n' "$kl" | awk -F'\t' -v n="${kn%%=*}" '$3 == n {print $2}' | sort -uV | tail -10 | paste -sd, -)
+fi
+nfsd=0; grep -qsxF nfsd /proc/[0-9]*/comm && nfsd=1   # 커널 스레드 nfsd. 사용자 공간 NFS 서버(nfs-ganesha)는 커널 nfsd가 아니다
+v41=""   # /proc/fs/nfsd/versions 예: "-2 +3 +4 +4.1 +4.2". 읽지 못하면 비워 둔다(조건 미확인)
+if [ -r /proc/fs/nfsd/versions ]; then
+  vv=" $(cat /proc/fs/nfsd/versions 2>/dev/null) "
+  case "$vv" in "  ") ;; *" -4 "*) v41=0 ;; *" +4.1 "*|*" +4.2 "*) v41=1 ;; *) v41=0 ;; esac
+fi
+nm=0; grep -qs '^nfsd ' /proc/modules && nm=1
+l2049=$(cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | awk '$4 == "0A" && $2 ~ /:0801$/ {f = 1} END {print f + 0}')
+ex=0; grep -qsvE '^[[:space:]]*(#|$)' /etc/exports /etc/exports.d/*.exports && ex=1
+be=""; if command -v systemctl >/dev/null 2>&1; then case "$(timeout 10 systemctl is-enabled nfs-server.service 2>/dev/null)" in enabled*) be=1 ;; *) be=0 ;; esac; fi
+o SW linux-kernel host "/boot/vmlinuz-$kr" "$kr" running "" "$kpkg" "nfsd=$nfsd${v41:+ nfs4_1=$v41} nfsd_mod=$nm listen2049=$l2049 exports=$ex${be:+ boot_enabled=$be}${kinst:+ installed=$kinst}"
 
 # ---- PKG: 패키지 관리자로 설치된 Java, MySQL, Oracle 계열, nginx 계열, PostgreSQL, Apache httpd, Node.js
 {

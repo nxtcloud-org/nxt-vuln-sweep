@@ -40,12 +40,13 @@
 | NGINX | 위치, 경로, 버전 문자열, 모듈, 실행, stale, 컨테이너 패키지 | 실행 중 nginx 계열 master 프로세스(위치 host 또는 `<런타임>:<컨테이너 ID 12자리>`)와 디스크의 nginx, openresty, angie 바이너리(위치 host/image). 버전 문자열 예: `nginx/1.24.0`, `openresty/1.25.3.2`, `nginx-plus-r35`. 모듈은 configure 인자 중 `--with-http_v2_module`, `--with-mail` 등. stale은 바이너리 교체 후 미재기동(exe deleted). 컨테이너 패키지는 컨테이너 안 dpkg/apk의 nginx 버전(`dpkg:1.27.3-1~bookworm`) |
 | NGXCONF | 위치, pid, 메인 설정 경로, 파일 수, 지시어 사용 여부 | master 프로세스의 설정(include를 따라감, 최대 300개, 컨테이너는 `/proc/<pid>/root`로 읽음). 예: `http2=1 quic=0 ssl=1 resolver=1 mail=0 ...`. Linux만 |
 | NGXCTL | 위치, pid, 종류, exe | 같은 컨테이너의 ingress 컨트롤러 프로세스(`ingress-nginx`, `f5-nginx-ingress`) |
-| SW | 제품 키, 위치, 경로, 버전, 실행, stale, 컨테이너 패키지, 플래그 | 범용 소프트웨어 레코드. 판정은 `_core/vsweep/software.py`와 criteria `[software.<제품 키>]`가 한다. 실행 중 레코드(pid)와 디스크 레코드는 판정기가 경로로 합친다
+| SW | 제품 키, 위치, 경로, 버전, 실행, stale, 패키지, 플래그 | 범용 소프트웨어 레코드. 판정은 `_core/vsweep/software.py`와 criteria `[software.<제품 키>]`가 한다. 실행 중 레코드(pid)와 디스크 레코드는 판정기가 경로로 합친다. 실행은 `pid N`(커널은 `running`). 패키지는 컨테이너 안 패키지 버전(`dpkg:1.27.3-1`) 또는 수집기가 찾은 호스트 패키지(`rpm:kernel=5.14.0-570.el9`)
 | | | - `postgresql`: postgres 서버 바이너리. 실행 중이면 부모(postmaster) 프로세스만. 플래그 `plperl`, `pltcl`, `dblink`, `dict_int`(같은 설치의 확장 라이브러리 파일 존재 여부) |
 | | | - `postgresql-client`: pg_dump, psql. 실행 여부는 보지 않음 |
 | | | - `httpd`: httpd, apache2. 실행 중이면 부모 프로세스만. 플래그 `mods`(프로세스 메모리에 올라온 mod_*.so 목록), `h2`(Protocols에 h2/h2c), `md_conf`(MDomain 계열 지시어), `vhost_alias_conf`(VirtualDocumentRoot 계열), `files`(읽은 설정 파일 수) |
 | | | - `npm-mongodb`: Node.js 앱의 `node_modules/mongodb/package.json`. 실행 중 node 프로세스의 작업 폴더와 스크립트 경로에서 위로 6단계까지 찾음 |
-| | | 버전은 바이너리 내장 문자열(`PostgreSQL 16.4 ... on`, `pg_dump (PostgreSQL) 16.4`, `Apache/2.4.58`)로 읽고 실행하지 않는다. Windows는 파일 ProductVersion |
+| | | - `linux-kernel`: 실행 중인 커널(`uname -r`) 한 줄. 패키지는 그 커널의 패키지 이름과 버전(rpm은 `-core`, `-64k`, `-debug`를 뗀 이름, dpkg는 Source에서 `-signed`와 아키텍처 접미어를 뗀 소스 패키지 이름. 예: `dpkg:linux-aws-5.15=5.15.0-1084.91~20.04.1`). 플래그 `nfsd`(커널 스레드 nfsd 동작), `nfs4_1`(`/proc/fs/nfsd/versions`에 +4.1 또는 +4.2, 읽지 못하면 없음), `nfsd_mod`(모듈 로드), `listen2049`(2049/tcp 수신), `exports`(`/etc/exports`에 공유 항목, 내용은 출력하지 않음), `boot_enabled`(nfs-server 부팅 시 시작), `installed`(같은 패키지의 설치된 버전 목록, 최대 10개) |
+| | | 버전은 바이너리 내장 문자열(`PostgreSQL 16.4 ... on`, `pg_dump (PostgreSQL) 16.4`, `Apache/2.4.58`)로 읽고 실행하지 않는다. Windows는 파일 ProductVersion. 커널은 `uname -r`과 패키지 조회(`rpm -qa`, `dpkg-query`) |
 | TRUNC | 종류, 위치, 전체 개수 | 상한 초과로 생략된 항목 |
 | END | 소요 시간 | 완료 표시 |
 

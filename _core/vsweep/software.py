@@ -1,9 +1,12 @@
-"""범용 소프트웨어 판정: 수집기 SW 레코드(PostgreSQL, Apache httpd, Node.js mongodb 패키지 등)를 기준표로 판정한다.
+"""범용 소프트웨어 판정: 수집기 SW 레코드(PostgreSQL, Apache httpd, Node.js mongodb 패키지, Linux 커널 등)를 기준표로 판정한다.
 
 수집 레코드 (scan_linux.sh, scan_windows.ps1)
-  SW <제품> <위치> <경로> <버전> <실행(pid N)> <stale> <컨테이너 패키지> <플래그>
-  제품 키: postgresql, postgresql-client, httpd, npm-mongodb (수집기가 아는 것만)
-  플래그: 'plperl=1 dblink=0', 'mods=http2,md h2=1' 처럼 공백으로 구분한 키=값. mods 목록은 mod_<이름>=1 로 풀어서 쓴다
+  SW <제품> <위치> <경로> <버전> <실행(pid N 또는 running)> <stale> <패키지> <플래그>
+  제품 키: postgresql, postgresql-client, httpd, npm-mongodb, linux-kernel (수집기가 아는 것만)
+  패키지: 컨테이너 안 패키지 버전('dpkg:1.2-1') 또는 수집기가 찾은 이 레코드의 호스트 패키지('rpm:kernel=5.14.0-570.el9').
+          이름이 붙은 호스트 패키지는 PKG 레코드 대신 이 값으로 배포판 수정 여부를 본다(커널처럼 같은 이름이 여러 버전 설치되는 제품)
+  플래그: 'plperl=1 dblink=0', 'mods=http2,md h2=1' 처럼 공백으로 구분한 키=값. mods 목록은 mod_<이름>=1 로 풀어서 쓴다.
+          installed=<버전>,<버전> 은 같은 패키지의 설치된 버전 목록(커널). 실행 중인 것보다 높은 버전이 있으면 비고에 적는다
 
 기준표 (criteria.toml)
   [software.<제품 키>]       이 공지가 다루는 제품. 없는 제품의 SW 레코드는 판정하지 않는다
@@ -15,7 +18,9 @@
     package_re               호스트 PKG 레코드에서 이 제품 패키지를 찾는 정규식 (표시용. 버전 문자열이 들어 있는 패키지만 붙인다)
     merge_dir                true면 같은 폴더의 바이너리를 한 줄로 합친다 (클라이언트 도구)
     [[software.<키>.distro_fixed]]  배포판 수정 정보. os(META os_id, rhel-9 처럼 주 버전만도 됨), package, version, kind(deb|rpm),
-                             source, cves(비우면 이 제품의 모든 CVE), status("fixed" 기본, "not_affected")
+                             source, cves(비우면 이 제품의 모든 CVE), status("fixed" 기본, "not_affected"),
+                             branch(선택, 설치 패키지 버전이 이 접두어로 시작할 때만 적용. 같은 패키지 이름에 계열이 여럿일 때. 예: "5.10")
+    [software.<키>.flag_notes]  플래그가 1이면 비고에 붙일 문구 (예: boot_enabled = "부팅 시 nfs-server 자동 시작")
   [[cves]] 에 판정용 키
     sw = ["postgresql"]      이 CVE가 해당하는 제품 키
     range = ["0", "18.6"]    영향 범위(포함). fixed = ["18.7", "17.12"] 같은 계열에서 이 버전 이상이면 수정
@@ -26,9 +31,10 @@
 """
 import re
 from collections import OrderedDict
+from functools import cmp_to_key
 
 from .common import vtuple
-from .products import pkg_vercmp
+from .products import AFFECTED, pkg_vercmp
 
 ORIGIN_LABEL = {"pkg": "패키지 설치", "build": "소스 빌드 또는 수동 설치", "image": "컨테이너 이미지", "app": "애플리케이션 의존성"}
 
@@ -82,14 +88,23 @@ def reach(cve, flags):
     return "unknown" if "unknown" in states else "met"
 
 
+def split_pkg(text):
+    """'rpm:kernel=5.14.0-570.el9' -> ('kernel', '5.14.0-570.el9', 'rpm'). 이름이 없는 값('dpkg:1.2-1')은 (None, None, None)"""
+    m = re.match(r"^(dpkg|apk|rpm):([^=\s]+)=(\S+)$", text or "")
+    return (m.group(2), m.group(3), "deb" if m.group(1) == "dpkg" else m.group(1)) if m else (None, None, None)
+
+
 def distro_resolution(cve_id, entries, pkgs):
     """'fixed' | 'available' | None. entries는 이 호스트 os_id에 맞는 distro_fixed 항목(정확히 맞는 것 먼저)"""
     for e in entries:
         if e.get("cves") and cve_id not in e["cves"]:
             continue
+        have = pkgs.get(e.get("package", ""))
+        br = e.get("branch")
+        if br and not (have and re.match(re.escape(br) + r"([.-]|$)", re.sub(r"^\d+:", "", have))):
+            continue
         if e.get("status", "fixed") == "not_affected":
             return "fixed", f"{e.get('source', '')} 해당 없음"
-        have = pkgs.get(e.get("package", ""))
         if not have:
             continue
         if pkg_vercmp(have, e["version"], e.get("kind", "rpm")) >= 0:
@@ -187,12 +202,15 @@ def software_findings(rows, crit, add):
             continue
         if sw_cfg[key].get("merge_dir") and loc != "image":   # 같은 폴더의 도구(pg_dump, psql)는 한 줄로
             path = path.rsplit("/", 1)[0].rsplit("\\", 1)[0] + "/"
-        e = entries.setdefault((key, loc, path), {"ver": "", "pids": [], "stale": "", "cpkg": "", "flags": None})
+        e = entries.setdefault((key, loc, path), {"ver": "", "pids": [], "stale": "", "cpkg": "", "flags": None, "installed": []})
         e["ver"] = e["ver"] or ver
         if run:
-            e["pids"].append(run.replace("pid ", ""))
+            e["pids"].append(run)
         e["stale"] = e["stale"] or stale
         e["cpkg"] = e["cpkg"] or cpkg
+        inst = re.search(r"(?:^|\s)installed=(\S+)", flags or "")
+        if inst:
+            e["installed"] = [x for x in inst.group(1).split(",") if x]
         fl = parse_flags(flags)
         if fl is not None:
             e["flags"] = {**fl, **(e["flags"] or {})} if not run else {**(e["flags"] or {}), **fl}
@@ -214,7 +232,10 @@ def software_findings(rows, crit, add):
             pick = next(((n, v) for n, v in cands if e["ver"] and e["ver"] in v), None)   # 버전이 맞는 패키지만 (다른 설치본의 패키지를 붙이지 않음)
             if pick:
                 pkg_ver = pick[1]
-        if e["cpkg"]:
+        rec_name, rec_ver, rec_kind = split_pkg(e["cpkg"]) if loc == "host" else (None, None, None)
+        if rec_name:   # 수집기가 찾아 준 이 레코드의 패키지(실행 중인 커널의 패키지)
+            pkg_ver = rec_ver
+        elif e["cpkg"]:
             pkg_ver = e["cpkg"]
         if key.startswith("npm-"):
             origin = "app"
@@ -225,18 +246,33 @@ def software_findings(rows, crit, add):
         else:
             origin = "image"
         ents = host_distro_entries(sc, os_id) if loc == "host" else []
-        status, verdict, cvss, detail = judge_one(key, sc, cves, e["ver"], e["flags"], origin, pkg_ver, ents, pkgs, bool(e["stale"]))
+        dpkgs = {rec_name: rec_ver} if rec_name else pkgs
+        status, verdict, cvss, detail = judge_one(key, sc, cves, e["ver"], e["flags"], origin, pkg_ver, ents, dpkgs, bool(e["stale"]))
         notes = [f"설치 방식: {ORIGIN_LABEL[origin]}"]
         if e["stale"]:
             notes.append("실행 파일 교체 후 미재기동(deleted): 실행 중인 것은 이전 바이너리")
-        if e["cpkg"]:
+        if e["cpkg"] and not rec_name:
             notes.append(f"컨테이너 패키지 {e['cpkg']}")
-        version = e["ver"] + (f" (패키지 {re.sub(r'^(dpkg|apk):', '', pkg_ver)})" if pkg_ver and loc == "host" else "")
+        if rec_name and e["installed"]:   # 더 높은 버전이 설치돼 있지만 실행 중이 아님(커널: 재부팅 전)
+            newest = max(e["installed"], key=cmp_to_key(lambda a, b: pkg_vercmp(a, b, rec_kind)))
+            if pkg_vercmp(newest, rec_ver, rec_kind) > 0:
+                st2 = judge_one(key, sc, cves, newest, e["flags"], origin, newest, ents, {rec_name: newest}, False)[0]
+                if status in AFFECTED and st2 == "out_of_range":
+                    notes.append(f"설치된 상위 버전 {newest}은 수정 버전 이상(재부팅하면 적용)")
+                else:
+                    notes.append(f"설치된 상위 버전 {newest}(아직 실행 중이 아님)")
+        for fk, txt in (sc.get("flag_notes") or {}).items() if status in AFFECTED else ():
+            if (e["flags"] or {}).get(fk):
+                notes.append(txt)
+        if rec_name:
+            version = f"{e['ver']} (패키지 {rec_name} {rec_ver})"
+        else:
+            version = e["ver"] + (f" (패키지 {re.sub(r'^(dpkg|apk):', '', pkg_ver)})" if pkg_ver and loc == "host" else "")
         if loc == "image":
             kind = f"{sc.get('label', key)}(컨테이너 이미지 레이어)"
         elif loc != "host":
             kind = f"{sc.get('label', key)}(컨테이너 실행 중)"
         else:
             kind = sc.get("label", key)
-        running = "; ".join(f"pid {p}" for p in e["pids"])
+        running = "; ".join("실행 중" if p == "running" else p for p in e["pids"])
         add(kind, loc, path, sc.get("label", key), version, running, (status, verdict, cvss), "; ".join(x for x in [detail] + notes if x))
