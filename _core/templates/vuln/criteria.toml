@@ -81,7 +81,7 @@ version = "0.0.0-0.amzn2023.0.0"
 kind = "rpm"                                    # rpm | deb
 source = "ALAS2023-YYYY-NNNN (YYYY-MM-DD)"
 
-# ---------------- 범용 소프트웨어 (수집기 SW 레코드: postgresql, postgresql-client, httpd, npm-mongodb)
+# ---------------- 범용 소프트웨어 (수집기 SW 레코드: postgresql, postgresql-client, httpd, npm-mongodb, linux-kernel)
 # 설명은 _core/vsweep/software.py 첫머리. 공지와 무관한 제품 표는 지운다
 [software.httpd]
 label = "Apache httpd"
@@ -97,6 +97,8 @@ version = "0.0.0-0ubuntu0"
 kind = "deb"                     # deb | rpm
 source = "USN-0000-1 (YYYY-MM-DD)"
 cves = []                        # 비우면 이 제품의 모든 CVE. status = "not_affected" 로 해당 없음 표시
+# branch = "5.10"                # 같은 패키지 이름에 계열이 여럿일 때(Amazon Linux 2 kernel). 설치 패키지 버전이 이 접두어일 때만 적용
+# [software.linux-kernel.flag_notes]   플래그가 1이면 비고에 붙일 문구 (예: boot_enabled = "nfs-server 부팅 시 자동 시작 설정됨")
 
 # ---------------- 보고서 판정 기준 시트용 제품 표
 [[products]]

@@ -80,7 +80,7 @@ collector = []
 [[watch]]
 name = "Linux 커널"
 match = ["linux kernel", "linux 커널"]
-collector = []
+collector = ["software.linux-kernel"]   # 실행 중 커널과 패키지(배포판 수정 버전 대조). 하위 시스템별 사용 조건은 nfsd만 수집
 
 [[watch]]
 name = "컨테이너 (Docker, containerd, runc, Kubernetes)"

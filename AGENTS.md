@@ -76,7 +76,7 @@
      - 점검 절차, 단계별 추가 확인, 판정 검토 포인트, 보고 문안 가이드, 기준표 갱신 방법(원문 읽는 법), 하지 말 것
      - 같은 벤더의 이전 폴더 AGENTS.md를 출발점으로 쓰면 원문 추출 방법 같은 내용을 다시 쓰지 않아도 됩니다.
 5. 수집기가 대상 제품을 잡는지 확인합니다.
-   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage), nginx 계열(nginx, OpenResty, Angie, NGINX Plus 바이너리와 설정의 지시어 사용 여부, 컨테이너 포함), 범용 SW 레코드(PostgreSQL 서버와 클라이언트 도구, Apache httpd와 로드된 모듈, Node.js 앱의 mongodb 패키지)
+   - 현재 수집 대상: Java(JDK/JRE, 컨테이너 포함), MySQL/MariaDB, Oracle Home(DB, Client, WebLogic/FMW), 파일(weblogic.jar, helidon-*.jar, ords.war, VBoxManage), nginx 계열(nginx, OpenResty, Angie, NGINX Plus 바이너리와 설정의 지시어 사용 여부, 컨테이너 포함), 범용 SW 레코드(PostgreSQL 서버와 클라이언트 도구, Apache httpd와 로드된 모듈, Node.js 앱의 mongodb 패키지, 실행 중인 Linux 커널과 그 패키지, NFS 서버(nfsd) 동작 여부)
    - 그 밖의 제품(OpenSSL, Log4j 등)은 수집기와 판정기를 확장해야 합니다. 절차는 `_core/COLLECTORS.md` 끝부분에 있습니다.
    - criteria.toml에 제품 섹션이 없는 제품은 판정하지 않고 보고서에도 넣지 않습니다. 이번 공지와 무관한 섹션은 지웁니다.
    - 판정기는 `_core/vsweep/products.py`에 함수를 만들고, `_core/vsweep/judge.py`에서 레코드 종류별로 호출합니다.
@@ -232,6 +232,10 @@ _core/sweep export $C $V
 | 다른 사용자 프로세스의 `/proc/<pid>/exe`, `root` | 권한(ptrace 제한)에 따라 읽히지 않음. 수집기는 호스트 프로세스를 `/` 기준으로 읽고, exe를 못 읽으면 명령행 첫 인자를 씀 |
 | PostgreSQL 배포판 패키지 | 배포판도 업스트림 마이너 버전을 그대로 따라가므로 버전 번호로 판정. 지원 종료 계열(13 이하)은 배포판이 백포트할 수 있어 P2 |
 | Apache httpd 배포판 패키지 | 백포트라 버전 번호가 그대로. RHEL은 mod_http2가 별도 패키지. `distro_fixed`에 패키지 이름까지 적음 |
+| 커널을 갱신하고 재부팅하지 않음 | 판정은 실행 중인 커널(`uname -r`)과 그 패키지 버전 기준. 수집기가 같은 패키지의 설치 버전을 함께 남기고, 판정기가 상위 버전 설치 사실을 비고에 적음 |
+| Ubuntu, Debian 커널 패키지 이름은 ABI마다 바뀜(`linux-image-5.15.0-1084-aws`) | 패키지의 Source에서 `-signed`와 아키텍처 접미어를 뗀 소스 패키지 이름(`linux-aws-5.15`, `linux`)으로 배포판 공지와 대조. `distro_fixed`의 package에 이 이름을 씀 |
+| 같은 패키지 이름에 커널 계열이 여럿(Amazon Linux 2의 kernel 4.14, 5.4, 5.10, 5.15) | ALAS 공지가 계열별로 따로 나옴(ALAS2KERNEL-5.10 등). `distro_fixed`에 `branch`를 적어 계열별로 대조 |
+| 커널 버전 문자열의 배포판 차이 | RHEL, Ubuntu는 업스트림 버전 번호가 그대로(5.14.0, 5.15.0)라 배포판 공지로만 판단. Amazon Linux, Debian은 stable 버전을 따라가므로 버전 번호가 업스트림 수정 버전 이상이면 범위 밖 |
 
 ## 커밋 전 검사
 
